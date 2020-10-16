@@ -99,8 +99,7 @@ Neural network for the XOR function:
 
 * Tests
 
-The tests require the *fiveam*, *chipz* and *trivial-garbage* packages. They
-can be run with:
+The tests require the *fiveam* and *chipz* packages. They can be run with:
 
 #+BEGIN_SRC lisp
 (asdf:test-system "simple-neural-network")

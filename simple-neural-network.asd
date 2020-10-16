@@ -12,7 +12,7 @@
   :components ((:file "simple-neural-network")))
 
 (defsystem "simple-neural-network/test"
-  :depends-on ("chipz" "fiveam" "simple-neural-network" "trivial-garbage")
+  :depends-on ("chipz" "fiveam" "simple-neural-network")
   :version "1.0"
   :in-order-to ((test-op (load-op "simple-neural-network/test")))
   :perform (test-op (o s)

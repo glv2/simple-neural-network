@@ -35,7 +35,22 @@
   (asdf:system-relative-pathname "simple-neural-network"
                                  (concatenate 'string "tests/" filename)))
 
-(defun load-mnist (type)
+(defun mnist-read-and-normalize-image (data offset)
+  (let ((image (make-array (* 28 28)
+                           :element-type 'double-float
+                           :initial-element 0.0d0)))
+    (dotimes (i (* 28 28) image)
+      (setf (aref image i) (/ (aref data (+ offset i)) 255.0d0)))))
+
+(defun mnist-read-and-normalize-label (data offset)
+  (let ((target (make-array 10
+                            :element-type 'double-float
+                            :initial-element 0.0d0))
+        (category (aref data offset)))
+    (setf (aref target category) 1.0d0)
+    target))
+
+(defun mnist-load (type)
   (destructuring-bind (n-images images-path labels-path)
       (if (eql type :train)
           (list 60000
@@ -48,33 +63,20 @@
                                      :element-type '(unsigned-byte 8))
                     (let ((images-data (chipz:decompress nil 'chipz:gzip f)))
                       (loop for i from 0 below n-images
-                            collect (coerce (loop with offset = (+ 16 (* i 28 28))
-                                                  for j from 0 below (* 28 28)
-                                                  collect (aref images-data (+ offset j)))
-                                            'vector)))))
-          (labels (with-open-file (f labels-path :element-type '(unsigned-byte 8))
+                            for offset = (+ 16 (* i 28 28))
+                            collect (mnist-read-and-normalize-image images-data
+                                                                    offset)))))
+          (labels (with-open-file (f labels-path
+                                     :element-type '(unsigned-byte 8))
                     (let ((labels-data (chipz:decompress nil 'chipz:gzip f)))
                       (loop for i from 0 below n-images
-                            collect (let ((v (aref labels-data (+ 8 i)))
-                                          (a (make-array 10 :initial-element 0.0d0)))
-                                      (setf (aref a v) 1.0d0)
-                                      a))))))
-      (trivial-garbage:gc :full t)
+                            collect (mnist-read-and-normalize-label labels-data
+                                                                    (+ 8 i)))))))
       (values images labels))))
 
 (test nn-mnist
-  (if #+sbcl (< (sb-ext:dynamic-space-size) (expt 2 32))
-      #-sbcl nil
-      (skip "Dynamic space size too small.")
-      (let ((nn (create-neural-network (* 28 28) 10 128)))
-        (multiple-value-bind (inputs targets) (load-mnist :train)
-          (mapc (lambda (input)
-                  (map-into input (lambda (x) (/ x 255.0d0)) input))
-                inputs)
-          (train nn inputs targets))
-        (trivial-garbage:gc :full t)
-        (multiple-value-bind (inputs targets) (load-mnist :test)
-          (mapc (lambda (input)
-                  (map-into input (lambda (x) (/ x 255.0d0)) input))
-                inputs)
-          (is (< 0.8 (accuracy nn inputs targets)))))))
+  (let ((nn (create-neural-network (* 28 28) 10 128)))
+    (multiple-value-bind (inputs targets) (mnist-load :train)
+      (train nn inputs targets))
+    (multiple-value-bind (inputs targets) (mnist-load :test)
+      (is (< 0.8 (accuracy nn inputs targets))))))

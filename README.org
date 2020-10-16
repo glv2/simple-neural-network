@@ -1,0 +1,107 @@
+#+TITLE: Simple Neural Network
+#+AUTHOR: Guillaume Le Vaillant
+#+DATE: 2020-10-16
+#+EMAIL: glv@posteo.net
+#+LANGUAGE: en
+#+OPTIONS: num:nil toc:nil html-postamble:nil html-scripts:nil
+#+HTML_DOCTYPE: html5
+
+
+* Description
+
+*simple-neural-network* is a Common Lisp library for creating, training and
+using basic neural networks.
+
+* License
+
+*simple-neural-network* is released under the GPL-3 license. See the [[file:LICENSE][LICENSE]]
+file for details.
+
+* API
+
+The functions are in the /simple-neural-network/ package. You can use the
+shorter /snn/ nickname if you prefer.
+
+The library works with double floats. Your inputs and targets must therefore be
+vectors of ~double-float~ numbers. For better results, they should also be
+normalized to contain values between 0 and 1.
+
+
+#+BEGIN_SRC lisp
+(create-neural-network input-size output-size &rest hidden-layres-sizes)
+#+END_SRC
+
+Create a neural network having /input-size/ inputs, /output-size/ outputs, and
+optionally some intermediary layers whose sizes are specified by
+/hidden-layers-sizes/. The neural network is initialized with random weights
+and biases.
+
+
+#+BEGIN_SRC lisp
+(train neural-network inputs targets)
+#+END_SRC
+
+Train the /neural-network/ using some /inputs/ and /targets/.
+
+
+#+BEGIN_SRC lisp
+(predict neural-network input)
+#+END_SRC
+
+Return the output computed by the /neural-network/ for a given /input/.
+
+
+#+BEGIN_SRC lisp
+(index-of-max-value values)
+#+END_SRC
+
+Return the index of the greatest value in /values/.
+
+
+#+BEGIN_SRC lisp
+(accuracy neural-network inputs targets)
+#+END_SRC
+
+Return the rate of good guesses computed by the /neural-network/ when testing
+it with some /inputs/ and /targets/. This function uses ~index-of-max-value~,
+so it only makes sense when the neural network was trained to classify the
+inputs in several classes (when targets contain a single 1 and many 0s).
+
+* Example
+
+Neural network for the XOR function:
+
+#+BEGIN_SRC lisp
+(defvar inputs '(#(0.0d0 0.0d0)
+                 #(0.0d0 1.0d0)
+                 #(1.0d0 0.0d0)
+                 #(1.0d0 1.0d0)))
+(defvar targets '(#(0.0d0)
+                  #(1.0d0)
+                  #(1.0d0)
+                  #(0.0d0)))
+(defvar nn (snn:create-neural-network 2 1 2))
+(dotimes (i 10000)
+  (snn:train nn inputs targets))
+
+(snn:predict nn #(0.0d0 0.0d0))
+#(0.011517370631772416d0)
+
+(snn:predict nn #(1.0d0 0.0d0))
+#(0.9890331262598525d0)
+
+(snn:predict nn #(0.0d0 1.0d0))
+#(0.9868481167720594d0)
+
+(snn:predict nn #(1.0d0 1.0d0))
+#(0.01031896572443079d0)
+#+END_SRC
+
+* Tests
+
+The tests require the *fiveam*, *chipz* and *trivial-garbage* packages. They
+can be run with:
+
+#+BEGIN_SRC lisp
+(asdf:test-system "simple-neural-network")
+#+END_SRC

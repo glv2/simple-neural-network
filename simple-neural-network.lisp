@@ -24,7 +24,15 @@
 (defun activation (x)
   "Sigmoid activation function for the neurons."
   (declare (type double-float x))
-  (/ 1.0d0 (+ 1.0d0 (exp (- x)))))
+  ;; Use some special cases to prevent possible floating point overflows when
+  ;; computing the exponential.
+  (cond
+    ((> x 100.0d0)
+     1.0d0)
+    ((< x -100.0d0)
+     0.0d0)
+    (t
+     (/ 1.0d0 (+ 1.0d0 (exp (- x)))))))
 
 (declaim (inline activation-prime))
 (defun activation-prime (x)

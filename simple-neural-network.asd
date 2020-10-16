@@ -8,4 +8,16 @@
   :version "1.0"
   :author "Guillaume Le Vaillant"
   :license "GPL-3"
+  :in-order-to ((test-op (test-op "simple-neural-network/test")))
   :components ((:file "simple-neural-network")))
+
+(defsystem "simple-neural-network/test"
+  :depends-on ("chipz" "fiveam" "simple-neural-network" "trivial-garbage")
+  :version "1.0"
+  :in-order-to ((test-op (load-op "simple-neural-network/test")))
+  :perform (test-op (o s)
+             (let ((tests (uiop:find-symbol* 'snn-tests
+                                             :simple-neural-network/test)))
+               (uiop:symbol-call :fiveam 'run! tests)))
+  :components ((:module "tests"
+                :components ((:file "tests")))))

@@ -28,21 +28,21 @@ normalized to contain values between 0 and 1.
 
 
 #+BEGIN_SRC lisp
-(create-neural-network input-size output-size learning-rate &rest hidden-layers-sizes)
+(create-neural-network input-size output-size &rest hidden-layers-sizes)
 #+END_SRC
 
 Create a neural network having /input-size/ inputs, /output-size/ outputs, and
 optionally some intermediary layers whose sizes are specified by
 /hidden-layers-sizes/. The neural network is initialized with random weights
-and biases that will be updated during the training process using the given
-/learning-rate/.
+and biases.
 
 
 #+BEGIN_SRC lisp
-(train neural-network inputs targets)
+(train neural-network inputs targets learning-rate)
 #+END_SRC
 
-Train the /neural-network/ using some /inputs/ and /targets/.
+Train the /neural-network/ at a given /learning-rate/ using some /inputs/ and
+/targets/.
 
 
 #+BEGIN_SRC lisp
@@ -81,9 +81,9 @@ Neural network for the XOR function:
                   #(1.0d0)
                   #(1.0d0)
                   #(0.0d0)))
-(defvar nn (snn:create-neural-network 2 1 0.5d0 2))
+(defvar nn (snn:create-neural-network 2 1 2))
 (dotimes (i 10000)
-  (snn:train nn inputs targets))
+  (snn:train nn inputs targets 0.5d0))
 
 (snn:predict nn #(0.0d0 0.0d0))
 #(0.011517370631772416d0)

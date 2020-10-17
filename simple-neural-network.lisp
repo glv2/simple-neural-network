@@ -18,7 +18,8 @@
   layers
   weights
   biases
-  deltas)
+  deltas
+  learning-rate)
 
 (declaim (inline activation))
 (defun activation (x)
@@ -58,11 +59,13 @@ and 1."
     (dotimes (i size biases)
       (setf (aref biases i) (1- (random 2.0d0))))))
 
-(defun create-neural-network (input-size output-size &rest hidden-layers-sizes)
+(defun create-neural-network (input-size output-size learning-rate
+                              &rest hidden-layers-sizes)
   "Create a neural network having INPUT-SIZE inputs, OUTPUT-SIZE outputs, and
 optionally some intermediary layers whose sizes are specified by
 HIDDEN-LAYERS-SIZES. The neural network is initialized with random weights and
-biases."
+biases that will be updated during the training process using the given
+LEARNING-RATE."
   (let* ((*random-state* (make-random-state t))
          (layer-sizes (append (list input-size)
                               hidden-layers-sizes
@@ -86,11 +89,13 @@ biases."
                            (make-array size
                                        :element-type 'double-float
                                        :initial-element 0.0d0))
-                         (rest layer-sizes))))
+                         (rest layer-sizes)))
+         (learning-rate (coerce learning-rate 'double-float)))
     (make-neural-network :layers layers
                          :weights weights
                          :biases biases
-                         :deltas deltas)))
+                         :deltas deltas
+                         :learning-rate learning-rate)))
 
 (defun set-input (neural-network input)
   "Set the input layer of the NEURAL-NETWORK to INPUT."
@@ -171,22 +176,24 @@ first layer."
                    (first weights)
                    (second deltas))))
 
-(defun update-weights (input weights delta)
+(defun update-weights (input weights delta learning-rate)
   "Update the WEIGHTS of a layer."
   (declare (type (simple-array double-float (*)) input delta)
            (type (simple-array double-float (* *)) weights)
+           (type double-float learning-rate)
            (optimize (speed 3)))
   (dotimes (i (length delta))
-    (let ((gradient (aref delta i)))
+    (let ((gradient (* learning-rate (aref delta i))))
       (declare (type double-float gradient))
       (dotimes (j (length input))
         (incf (aref weights j i) (* gradient (aref input j)))))))
 
-(defun update-biases (biases delta)
+(defun update-biases (biases delta learning-rate)
   "Update the BIASES of a layer."
-  (declare (type (simple-array double-float (*)) biases delta))
+  (declare (type (simple-array double-float (*)) biases delta)
+           (type double-float learning-rate))
   (dotimes (i (length biases))
-    (incf (aref biases i) (aref delta i))))
+    (incf (aref biases i) (* learning-rate (aref delta i)))))
 
 (defun update-weights-and-biases (neural-network)
   "Update all the weights and biases of the NEURAL-NETWORK."
@@ -197,13 +204,16 @@ first layer."
        (biases (neural-network-biases neural-network)
                (rest biases))
        (deltas (neural-network-deltas neural-network)
-               (rest deltas)))
+               (rest deltas))
+       (learning-rate (neural-network-learning-rate neural-network)))
       ((endp weights) neural-network)
     (update-weights (first layers)
                     (first weights)
-                    (first deltas))
+                    (first deltas)
+                    learning-rate)
     (update-biases (first biases)
-                   (first deltas))))
+                   (first deltas)
+                   learning-rate)))
 
 (defun train (neural-network inputs targets)
   "Train the NEURAL-NETWORK using some INPUTS and TARGETS."

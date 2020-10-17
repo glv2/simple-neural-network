@@ -23,7 +23,7 @@
                    #(1.0d0)
                    #(1.0d0)
                    #(0.0d0)))
-        (nn (create-neural-network 2 1 2)))
+        (nn (create-neural-network 2 1 0.5d0 2)))
     (dotimes (i 30000)
       (train nn inputs targets))
     (is (> 0.2 (aref (predict nn #(0.0d0 0.0d0)) 0)))
@@ -75,7 +75,7 @@
       (values images labels))))
 
 (test nn-mnist
-  (let ((nn (create-neural-network (* 28 28) 10 128)))
+  (let ((nn (create-neural-network (* 28 28) 10 0.5d0 128)))
     (multiple-value-bind (inputs targets) (mnist-load :train)
       (train nn inputs targets))
     (multiple-value-bind (inputs targets) (mnist-load :test)

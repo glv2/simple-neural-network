@@ -43,7 +43,7 @@
                             (vector (cos (aref input 0))))
                           inputs))
          (nn (create-neural-network 1 1 3 3)))
-    (dotimes (i 1000)
+    (dotimes (i 2000)
       (train nn inputs targets 0.8d0))
     (dotimes (i 10)
       (let* ((input (random limit))

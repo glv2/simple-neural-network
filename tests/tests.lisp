@@ -50,7 +50,7 @@
              (target (cos input))
              (output (aref (predict nn (vector input)) 0))
              (err (abs (- output target))))
-        (is-true (< err 0.01))))))
+        (is-true (< err 0.02))))))
 
 (defun mnist-file-path (filename)
   (asdf:system-relative-pathname "simple-neural-network"

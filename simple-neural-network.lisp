@@ -142,7 +142,7 @@ TARGET."
       (let ((value (aref output i)))
         (declare (type double-float value))
         (setf (aref delta i) (* (activation-prime value)
-                                (- (aref target i) value)))))))
+                                (- value (aref target i))))))))
 
 (defun compute-delta (previous-delta output weights delta)
   "Compute the error of the OUTPUT layer based on the error of the next layer."
@@ -181,14 +181,14 @@ first layer."
     (let ((gradient (* learning-rate (aref delta i))))
       (declare (type double-float gradient))
       (dotimes (j (length input))
-        (incf (aref weights j i) (* gradient (aref input j)))))))
+        (decf (aref weights j i) (* gradient (aref input j)))))))
 
 (defun update-biases (biases delta learning-rate)
   "Update the BIASES of a layer."
   (declare (type (simple-array double-float (*)) biases delta)
            (type double-float learning-rate))
   (dotimes (i (length biases))
-    (incf (aref biases i) (* learning-rate (aref delta i)))))
+    (decf (aref biases i) (* learning-rate (aref delta i)))))
 
 (defun update-weights-and-biases (neural-network learning-rate)
   "Update all the weights and biases of the NEURAL-NETWORK."

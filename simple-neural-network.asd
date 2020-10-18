@@ -8,11 +8,12 @@
   :version "1.0"
   :author "Guillaume Le Vaillant"
   :license "GPL-3"
+  :depends-on ("cl-store")
   :in-order-to ((test-op (test-op "simple-neural-network/test")))
   :components ((:file "simple-neural-network")))
 
 (defsystem "simple-neural-network/test"
-  :depends-on ("chipz" "fiveam" "simple-neural-network")
+  :depends-on ("chipz" "fiveam" "simple-neural-network" "uiop")
   :version "1.0"
   :in-order-to ((test-op (load-op "simple-neural-network/test")))
   :perform (test-op (o s)

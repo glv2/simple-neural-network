@@ -12,6 +12,8 @@
 *simple-neural-network* is a Common Lisp library for creating, training and
 using basic neural networks.
 
+The only dependency is the *cl-store* library.
+
 * License
 
 *simple-neural-network* is released under the GPL-3 license. See the [[file:LICENSE][LICENSE]]
@@ -52,6 +54,22 @@ Train the /neural-network/ at a given /learning-rate/ using some /inputs/ and
 Return the output computed by the /neural-network/ for a given /input/. If
 /output/ is not ~nil~, the output is written in it, otherwise a new vector is
 allocated.
+
+
+#+BEGIN_SRC lisp
+(store neural-network place)
+#+END_SRC
+
+Store the /neural-network/ to /place/, which must be a stream or
+a pathname-designator.
+
+
+#+BEGIN_SRC lisp
+(restore place)
+#+END_SRC
+
+Restore the neural network stored in /place/, which must be a stream or
+a pathname-designator.
 
 
 #+BEGIN_SRC lisp
@@ -102,7 +120,7 @@ Neural network for the XOR function:
 
 * Tests
 
-The tests require the *fiveam* and *chipz* packages. They can be run with:
+The tests require the *fiveam* and *chipz* libraries. They can be run with:
 
 #+BEGIN_SRC lisp
 (asdf:test-system "simple-neural-network")

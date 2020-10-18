@@ -8,6 +8,8 @@
   (:export #:create-neural-network
            #:train
            #:predict
+           #:store
+           #:restore
            #:index-of-max-value
            #:accuracy))
 
@@ -215,6 +217,36 @@ TARGETS."
           targets)
     neural-network))
 
+(defun predict (neural-network input &optional output)
+  "Return the output computed by the NEURAL-NETWORK for a given INPUT. If
+OUTPUT is not NIL, the output is written in it, otherwise a new vector is
+allocated."
+  (set-input neural-network input)
+  (propagate neural-network)
+  (if output
+      (replace output (get-output neural-network))
+      (copy-seq (get-output neural-network))))
+
+(defun store (neural-network place)
+  "Store the NEURAL-NETWORK to PLACE, which must be a stream or
+a pathname-designator."
+  ;; cl-store only supports serialization of structures on SBCL and CMUCL.
+  ;; Use a list instead to support other implementations.
+  (cl-store:store (list (neural-network-layers neural-network)
+                        (neural-network-weights neural-network)
+                        (neural-network-biases neural-network)
+                        (neural-network-deltas neural-network))
+                  place))
+
+(defun restore (place)
+  "Restore the neural network stored in PLACE, which must be a stream or
+a pathname-designator."
+  (destructuring-bind (layers weights biases deltas) (cl-store:restore place)
+    (make-neural-network :layers layers
+                         :weights weights
+                         :biases biases
+                         :deltas deltas)))
+
 (defun index-of-max-value (values)
   "Return the index of the greatest value in VALUES."
   (do ((size (length values))
@@ -225,16 +257,6 @@ TARGETS."
     (when (> (aref values i) maximum)
       (setf index i)
       (setf maximum (aref values i)))))
-
-(defun predict (neural-network input &optional output)
-  "Return the output computed by the NEURAL-NETWORK for a given INPUT. If
-OUTPUT is not NIL, the output is written in it, otherwise a new vector is
-allocated."
-  (set-input neural-network input)
-  (propagate neural-network)
-  (if output
-      (replace output (get-output neural-network))
-      (copy-seq (get-output neural-network))))
 
 (defun accuracy (neural-network inputs targets)
   "Return the rate of good guesses computed by the NEURAL-NETWORK when testing

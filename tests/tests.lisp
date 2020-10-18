@@ -3,7 +3,12 @@
 ;;; This library is free software released under the GNU GPL-3 license.
 
 (defpackage :simple-neural-network/test
-  (:use :cl :fiveam :simple-neural-network))
+  (:use :cl :fiveam :simple-neural-network)
+  (:import-from :simple-neural-network
+                #:neural-network-layers
+                #:neural-network-weights
+                #:neural-network-biases
+                #:neural-network-deltas))
 
 (in-package :simple-neural-network/test)
 
@@ -101,3 +106,20 @@
       (train nn inputs targets 0.5d0))
     (multiple-value-bind (inputs targets) (mnist-load :test)
       (is (< 0.8 (accuracy nn inputs targets))))))
+
+(test store/restore
+  (let ((nn1 (create-neural-network 3 2 4))
+        (input #(0.2d0 0.5d0 0.1d0))
+        (target #(0.1d0 0.2d0 0.3d0 0.4d0)))
+    (train nn1 (list input) (list target) 0.6d0)
+    (uiop:with-temporary-file (:pathname path)
+      (store nn1 path)
+      (let ((nn2 (restore path)))
+        (is (equalp (neural-network-layers nn1)
+                    (neural-network-layers nn2)))
+        (is (equalp (neural-network-weights nn1)
+                    (neural-network-weights nn2)))
+        (is (equalp (neural-network-biases nn1)
+                    (neural-network-biases nn2)))
+        (is (equalp (neural-network-deltas nn1)
+                    (neural-network-deltas nn2)))))))

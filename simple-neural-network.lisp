@@ -226,18 +226,24 @@ TARGETS."
       (setf index i)
       (setf maximum (aref values i)))))
 
-(defun predict (neural-network input)
-  "Return the output computed by the NEURAL-NETWORK for a given INPUT."
+(defun predict (neural-network input &optional output)
+  "Return the output computed by the NEURAL-NETWORK for a given INPUT. If
+OUTPUT is not NIL, the output is written in it, otherwise a new vector is
+allocated."
   (set-input neural-network input)
   (propagate neural-network)
-  (get-output neural-network))
+  (if output
+      (replace output (get-output neural-network))
+      (copy-seq (get-output neural-network))))
 
 (defun accuracy (neural-network inputs targets)
   "Return the rate of good guesses computed by the NEURAL-NETWORK when testing
 it with some INPUTS and TARGETS."
-  (let ((guesses (mapcar (lambda (input target)
+  (let* ((output (copy-seq (get-output neural-network)))
+         (guesses (mapcar (lambda (input target)
                            (= (index-of-max-value (predict neural-network
-                                                           input))
+                                                           input
+                                                           output))
                               (index-of-max-value target)))
                          inputs
                          targets)))

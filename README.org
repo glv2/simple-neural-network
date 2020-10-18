@@ -1,6 +1,6 @@
 #+TITLE: Simple Neural Network
 #+AUTHOR: Guillaume Le Vaillant
-#+DATE: 2020-10-16
+#+DATE: 2020-10-18
 #+EMAIL: glv@posteo.net
 #+LANGUAGE: en
 #+OPTIONS: num:nil toc:nil html-postamble:nil html-scripts:nil
@@ -46,10 +46,12 @@ Train the /neural-network/ at a given /learning-rate/ using some /inputs/ and
 
 
 #+BEGIN_SRC lisp
-(predict neural-network input)
+(predict neural-network input &optional output)
 #+END_SRC
 
-Return the output computed by the /neural-network/ for a given /input/.
+Return the output computed by the /neural-network/ for a given /input/. If
+/output/ is not ~nil~, the output is written in it, otherwise a new vector is
+allocated.
 
 
 #+BEGIN_SRC lisp

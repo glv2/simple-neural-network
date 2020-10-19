@@ -31,15 +31,19 @@
         (nn (create-neural-network 2 1 2)))
     (dotimes (i 30000)
       (train nn inputs targets 0.5d0))
-    (flet ((threshold (x)
-             (if (> x 1/2) 1 0)))
-      (dotimes (i 10)
-        (let* ((x (random 2))
-               (y (random 2))
-               (input (vector (float x 1.0d0) (float y 1.0d0)))
-               (target (logxor x y))
-               (output (threshold (aref (predict nn input) 0))))
-          (is (= target output)))))))
+    (flet ((same-value-p (output target)
+             (let ((x (aref output 0))
+                   (y (aref target 0)))
+               (= (if (< x 1/2) 0 1) y))))
+      (destructuring-bind (inputs targets)
+          (loop
+            repeat 10
+            for x = (random 2)
+            for y = (random 2)
+            collect (vector (float x 1.0d0) (float y 1.0d0)) into inputs
+            collect (vector (logxor x y)) into targets
+            finally (return (list inputs targets)))
+        (is (= 1 (accuracy nn inputs targets :test #'same-value-p)))))))
 
 (test nn-cos
   (let* ((limit (float (/ pi 2) 1.0d0))
@@ -50,12 +54,18 @@
          (nn (create-neural-network 1 1 3 3)))
     (dotimes (i 2000)
       (train nn inputs targets 0.8d0))
-    (dotimes (i 10)
-      (let* ((input (random limit))
-             (target (cos input))
-             (output (aref (predict nn (vector input)) 0))
-             (err (abs (- output target))))
-        (is-true (< err 0.02))))))
+    (flet ((close-enough-p (output target)
+             (let ((x (aref output 0))
+                   (y (aref target 0)))
+               (< (abs (- x y)) 0.02))))
+      (destructuring-bind (inputs targets)
+          (loop
+            repeat 10
+            for x = (random limit)
+            collect (vector x) into inputs
+            collect (vector (cos x)) into targets
+            finally (return (list inputs targets)))
+        (is (= 1 (accuracy nn inputs targets :test #'close-enough-p)))))))
 
 (defun mnist-file-path (filename)
   (asdf:system-relative-pathname "simple-neural-network"

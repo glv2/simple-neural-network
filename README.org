@@ -80,13 +80,23 @@ Return the index of the greatest value in /values/.
 
 
 #+BEGIN_SRC lisp
-(accuracy neural-network inputs targets)
+(same-category-p output target)
+#+END_SRC
+
+Return ~t~ if calls to ~index-of-max-value~ on /output/ and /target/ return the
+same value, and ~nil~ otherwise. This function is only useful when the neural
+network was trained to classify the inputs in several categories, when targets
+contain a single 1 and 0s.
+
+
+#+BEGIN_SRC lisp
+(accuracy neural-network inputs targets &key test)
 #+END_SRC
 
 Return the rate of good guesses computed by the /neural-network/ when testing
-it with some /inputs/ and /targets/. This function uses ~index-of-max-value~,
-so it only makes sense when the neural network was trained to classify the
-inputs in several classes (when targets contain a single 1 and many 0s).
+it with some /inputs/ and /targets/. /test/ must be a function taking an output
+and a target returning ~t~ if the output is considered to be close enough to
+the target, and ~nil~ otherwise. ~same-category-p~ is used by default.
 
 * Example
 

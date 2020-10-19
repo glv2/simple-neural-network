@@ -11,6 +11,7 @@
            #:store
            #:restore
            #:index-of-max-value
+           #:same-category-p
            #:accuracy))
 
 (in-package :simple-neural-network)
@@ -258,15 +259,22 @@ a pathname-designator."
       (setf index i)
       (setf maximum (aref values i)))))
 
-(defun accuracy (neural-network inputs targets)
+(defun same-category-p (output target)
+  "Return T if calls to INDEX-OF-MAX-VALUE on OUTPUT and TARGET return the same
+value, and NIL otherwise."
+  (= (index-of-max-value output)
+     (index-of-max-value target)))
+
+(defun accuracy (neural-network inputs targets &key (test #'same-category-p))
   "Return the rate of good guesses computed by the NEURAL-NETWORK when testing
-it with some INPUTS and TARGETS."
+it with some INPUTS and TARGETS. TEST must be a function taking an output and
+a target returning T if the output is considered to be close enough to the
+target, and NIL otherwise. SAME-CATEGORY-P is used by default."
   (let* ((output (copy-seq (get-output neural-network)))
          (guesses (mapcar (lambda (input target)
-                           (= (index-of-max-value (predict neural-network
-                                                           input
-                                                           output))
-                              (index-of-max-value target)))
+                            (funcall test
+                                     (predict neural-network input output)
+                                     target))
                          inputs
                          targets)))
     (/ (count t guesses) (length inputs))))

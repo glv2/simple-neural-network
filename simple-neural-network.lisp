@@ -142,10 +142,10 @@ TARGET."
         (delta (first (last (neural-network-deltas neural-network)))))
     (declare (type (simple-array double-float (*)) output delta))
     (dotimes (i (length output) delta)
-      (let ((value (aref output i)))
-        (declare (type double-float value))
-        (setf (aref delta i) (* (activation-prime value)
-                                (- value (aref target i))))))))
+      (let* ((value (aref output i))
+             (diff (- value (aref target i))))
+        (declare (type double-float value diff))
+        (setf (aref delta i) (* (activation-prime value) diff))))))
 
 (defun compute-delta (previous-delta output weights delta)
   "Compute the error of the OUTPUT layer based on the error of the next layer."

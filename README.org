@@ -111,21 +111,21 @@ Neural network for the XOR function:
                   #(1.0d0)
                   #(1.0d0)
                   #(0.0d0)))
-(defvar nn (snn:create-neural-network 2 1 2))
+(defvar nn (snn:create-neural-network 2 1 4))
 (dotimes (i 10000)
   (snn:train nn inputs targets 0.5d0))
 
 (snn:predict nn #(0.0d0 0.0d0))
-#(0.011517370631772416d0)
+#(0.008742797822178053d0)
 
 (snn:predict nn #(1.0d0 0.0d0))
-#(0.9890331262598525d0)
+#(0.9843829779784249d0)
 
 (snn:predict nn #(0.0d0 1.0d0))
-#(0.9868481167720594d0)
+#(0.9819689138450407d0)
 
 (snn:predict nn #(1.0d0 1.0d0))
-#(0.01031896572443079d0)
+#(0.020513774356581006d0)
 #+END_SRC
 
 * Tests

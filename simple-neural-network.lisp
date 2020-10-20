@@ -150,7 +150,8 @@ TARGET."
 (defun compute-delta (previous-delta output weights delta)
   "Compute the error of the OUTPUT layer based on the error of the next layer."
   (declare (type (simple-array double-float (*)) previous-delta output delta)
-           (type (array double-float (* *)) weights))
+           (type (simple-array double-float (* *)) weights)
+           (optimize (speed 3)))
   (dotimes (i (length delta) delta)
     (let ((value 0.0d0))
       (declare (type double-float value))

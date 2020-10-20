@@ -28,7 +28,7 @@
                    #(1.0d0)
                    #(1.0d0)
                    #(0.0d0)))
-        (nn (create-neural-network 2 1 2)))
+        (nn (create-neural-network 2 1 4)))
     (dotimes (i 30000)
       (train nn inputs targets 0.5d0))
     (flet ((same-value-p (output target)

@@ -46,11 +46,11 @@
 (defun make-random-weights (input-size output-size)
   "Generate a matrix (INPUT-SIZE * OUTPUT-SIZE) of random weights between -1
 and 1."
-  (let ((weights (make-array (list input-size output-size)
+  (let ((weights (make-array (list output-size input-size)
                              :element-type 'double-float
                              :initial-element 0.0d0)))
-    (dotimes (i input-size weights)
-      (dotimes (j output-size)
+    (dotimes (i output-size weights)
+      (dotimes (j input-size)
         (setf (aref weights i j) (1- (random 2.0d0)))))))
 
 (defun make-random-biases (size)
@@ -116,7 +116,7 @@ biases."
     (let ((aggregation (aref biases i)))
       (declare (type double-float aggregation))
       (dotimes (j (length input))
-        (incf aggregation (* (aref input j) (aref weights j i))))
+        (incf aggregation (* (aref input j) (aref weights i j))))
       (setf (aref output i) (activation aggregation)))))
 
 (defun propagate (neural-network)
@@ -156,7 +156,7 @@ TARGET."
     (let ((value 0.0d0))
       (declare (type double-float value))
       (dotimes (j (length previous-delta))
-        (incf value (* (aref previous-delta j) (aref weights i j))))
+        (incf value (* (aref previous-delta j) (aref weights j i))))
       (setf (aref delta i) (* (activation-prime (aref output i))
                               value)))))
 
@@ -185,7 +185,7 @@ first layer."
     (let ((gradient (* learning-rate (aref delta i))))
       (declare (type double-float gradient))
       (dotimes (j (length input))
-        (decf (aref weights j i) (* gradient (aref input j)))))))
+        (decf (aref weights i j) (* gradient (aref input j)))))))
 
 (defun update-biases (biases delta learning-rate)
   "Update the BIASES of a layer."

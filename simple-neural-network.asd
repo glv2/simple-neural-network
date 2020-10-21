@@ -8,7 +8,7 @@
   :version "1.0"
   :author "Guillaume Le Vaillant"
   :license "GPL-3"
-  :depends-on ("cl-store")
+  :depends-on ("cl-store" "lparallel")
   :in-order-to ((test-op (test-op "simple-neural-network/test")))
   :components ((:file "simple-neural-network")))
 

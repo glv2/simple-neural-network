@@ -1,6 +1,6 @@
 #+TITLE: Simple Neural Network
 #+AUTHOR: Guillaume Le Vaillant
-#+DATE: 2020-10-18
+#+DATE: 2020-10-22
 #+EMAIL: glv@posteo.net
 #+LANGUAGE: en
 #+OPTIONS: num:nil toc:nil html-postamble:nil html-scripts:nil
@@ -12,7 +12,7 @@
 *simple-neural-network* is a Common Lisp library for creating, training and
 using basic neural networks.
 
-The only dependency is the *cl-store* library.
+*simple-neural-network* depends on the *cl-store* and *lparallel* libraries.
 
 * License
 
@@ -27,6 +27,10 @@ shorter /snn/ nickname if you prefer.
 The library works with double floats. Your inputs and targets must therefore be
 vectors of ~double-float~ numbers. For better results, they should also be
 normalized to contain values between 0 and 1.
+
+If ~lparallel:*kernel*~ is set or bound, some computations will be done in
+parallel. This is only useful if the network is big enough, because the
+overhead of task management can instead slow things down for small networks.
 
 
 #+BEGIN_SRC lisp
@@ -98,11 +102,13 @@ it with some /inputs/ and /targets/. /test/ must be a function taking an output
 and a target returning ~t~ if the output is considered to be close enough to
 the target, and ~nil~ otherwise. ~same-category-p~ is used by default.
 
-* Example
+* Examples
 
 Neural network for the XOR function:
 
 #+BEGIN_SRC lisp
+(asdf:load-system "simple-neural-network")
+
 (defvar inputs '(#(0.0d0 0.0d0)
                  #(0.0d0 1.0d0)
                  #(1.0d0 0.0d0)
@@ -116,16 +122,33 @@ Neural network for the XOR function:
   (snn:train nn inputs targets 0.5d0))
 
 (snn:predict nn #(0.0d0 0.0d0))
-#(0.008742797822178053d0)
+-> #(0.008742797822178053d0)
 
 (snn:predict nn #(1.0d0 0.0d0))
-#(0.9843829779784249d0)
+-> #(0.9843829779784249d0)
 
 (snn:predict nn #(0.0d0 1.0d0))
-#(0.9819689138450407d0)
+-> #(0.9819689138450407d0)
 
 (snn:predict nn #(1.0d0 1.0d0))
-#(0.020513774356581006d0)
+-> #(0.020513774356581006d0)
+#+END_SRC
+
+
+Neural network for the MNIST dataset, using parallelism (2 threads):
+
+#+BEGIN_SRC lisp
+;; Note: the mnist-load function used below is defined in "tests/tests.lisp".
+
+(setf lparallel:*kernel* (lparallel:make-kernel 2))
+(defvar nn (snn:create-neural-network 784 10 128))
+(multiple-value-bind (inputs targets) (mnist-load :train)
+  (dotimes (i 3)
+    (snn:train nn inputs targets 0.5d0)))
+
+(multiple-value-bind (inputs targets) (mnist-load :test)
+  (snn:accuracy nn inputs targets))
+-> 2393/2500
 #+END_SRC
 
 * Tests

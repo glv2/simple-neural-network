@@ -17,6 +17,9 @@
 (in-package :simple-neural-network)
 
 
+(deftype double-float-array ()
+  '(simple-array double-float (*)))
+
 (defstruct neural-network
   layers
   weights
@@ -46,12 +49,11 @@
 (defun make-random-weights (input-size output-size)
   "Generate a matrix (INPUT-SIZE * OUTPUT-SIZE) of random weights between -1
 and 1."
-  (let ((weights (make-array (list output-size input-size)
+  (let ((weights (make-array (* output-size input-size)
                              :element-type 'double-float
                              :initial-element 0.0d0)))
-    (dotimes (i output-size weights)
-      (dotimes (j input-size)
-        (setf (aref weights i j) (1- (random 2.0d0)))))))
+    (dotimes (i (* output-size input-size) weights)
+      (setf (aref weights i) (1- (random 2.0d0))))))
 
 (defun make-random-biases (size)
   "Generate a vector of SIZE random biases between -1 and 1."
@@ -99,7 +101,7 @@ biases."
   "Set the input layer of the NEURAL-NETWORK to INPUT."
   (declare (type vector input))
   (let ((input-layer (first (neural-network-layers neural-network))))
-    (declare (type (simple-array double-float (*)) input-layer))
+    (declare (type double-float-array input-layer))
     (dotimes (i (length input-layer) neural-network)
       (setf (aref input-layer i) (aref input i)))))
 
@@ -109,15 +111,21 @@ biases."
 
 (defun compute-values (input output weights biases)
   "Compute the values of the neurons in the OUTPUT layer."
-  (declare (type (simple-array double-float (*)) input output biases)
-           (type (simple-array double-float (* *)) weights)
-           (optimize (speed 3)))
-  (dotimes (i (length output))
-    (let ((aggregation (aref biases i)))
-      (declare (type double-float aggregation))
-      (dotimes (j (length input))
-        (incf aggregation (* (aref input j) (aref weights i j))))
-      (setf (aref output i) (activation aggregation)))))
+  (declare (type double-float-array input output weights biases)
+           (optimize (speed 3) (safety 0)))
+  (let ((input-size (length input))
+        (output-size (length output)))
+    (declare (type fixnum input-size output-size))
+    (dotimes (i output-size)
+      (declare (type fixnum i))
+      (let ((offset (the fixnum (* i input-size)))
+            (aggregation (aref biases i)))
+        (declare (type fixnum offset)
+                 (type double-float aggregation))
+        (dotimes (j input-size)
+          (declare (type fixnum j))
+          (incf aggregation (* (aref input j) (aref weights (+ offset j)))))
+        (setf (aref output i) (activation aggregation))))))
 
 (defun propagate (neural-network)
   "Propagate the values of the input layer of the NEURAL-NETWORK to the output
@@ -140,7 +148,7 @@ TARGET."
   (declare (type vector target))
   (let ((output (get-output neural-network))
         (delta (first (last (neural-network-deltas neural-network)))))
-    (declare (type (simple-array double-float (*)) output delta))
+    (declare (type double-float-array output delta))
     (dotimes (i (length output) delta)
       (let* ((value (aref output i))
              (diff (- value (aref target i))))
@@ -149,16 +157,22 @@ TARGET."
 
 (defun compute-delta (previous-delta output weights delta)
   "Compute the error of the OUTPUT layer based on the error of the next layer."
-  (declare (type (simple-array double-float (*)) previous-delta output delta)
-           (type (simple-array double-float (* *)) weights)
-           (optimize (speed 3)))
-  (dotimes (i (length delta) delta)
-    (let ((value 0.0d0))
-      (declare (type double-float value))
-      (dotimes (j (length previous-delta))
-        (incf value (* (aref previous-delta j) (aref weights j i))))
-      (setf (aref delta i) (* (activation-prime (aref output i))
-                              value)))))
+  (declare (type double-float-array previous-delta output weights delta)
+           (optimize (speed 3) (safety 0)))
+  (let ((previous-delta-size (length previous-delta))
+        (delta-size (length delta)))
+    (declare (type fixnum previous-delta-size delta-size))
+    (dotimes (i delta-size delta)
+      (declare (type fixnum i))
+      (let ((value 0.0d0))
+        (declare (type double-float value))
+        (dotimes (j previous-delta-size)
+          (declare (type fixnum j))
+          (let ((offset (+ (the fixnum (* j delta-size)) i)))
+            (declare (type fixnum offset))
+            (incf value (* (aref previous-delta j) (aref weights offset)))))
+        (setf (aref delta i) (* (activation-prime (aref output i))
+                                value))))))
 
 (defun backpropagate (neural-network)
   "Propagate the error of the output layer of the NEURAL-NETWORK back to the
@@ -177,19 +191,25 @@ first layer."
 
 (defun update-weights (input weights delta learning-rate)
   "Update the WEIGHTS of a layer."
-  (declare (type (simple-array double-float (*)) input delta)
-           (type (simple-array double-float (* *)) weights)
+  (declare (type double-float-array input weights delta)
            (type double-float learning-rate)
-           (optimize (speed 3)))
-  (dotimes (i (length delta))
-    (let ((gradient (* learning-rate (aref delta i))))
-      (declare (type double-float gradient))
-      (dotimes (j (length input))
-        (decf (aref weights i j) (* gradient (aref input j)))))))
+           (optimize (speed 3) (safety 0)))
+  (let ((input-size (length input))
+        (delta-size (length delta)))
+    (declare (type fixnum input-size delta-size))
+    (dotimes (i delta-size)
+      (declare (type fixnum i))
+      (let ((offset (the fixnum (* i input-size)))
+            (gradient (* learning-rate (aref delta i))))
+        (declare (type fixnum offset)
+                 (type double-float gradient))
+        (dotimes (j input-size)
+          (declare (type fixnum j))
+          (decf (aref weights (+ offset j)) (* gradient (aref input j))))))))
 
 (defun update-biases (biases delta learning-rate)
   "Update the BIASES of a layer."
-  (declare (type (simple-array double-float (*)) biases delta)
+  (declare (type double-float-array biases delta)
            (type double-float learning-rate))
   (dotimes (i (length biases))
     (decf (aref biases i) (* learning-rate (aref delta i)))))

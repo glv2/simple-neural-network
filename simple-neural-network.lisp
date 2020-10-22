@@ -102,8 +102,8 @@ biases."
   (declare (type vector input))
   (let ((input-layer (first (neural-network-layers neural-network))))
     (declare (type double-float-array input-layer))
-    (dotimes (i (length input-layer) neural-network)
-      (setf (aref input-layer i) (aref input i)))))
+    (replace input-layer input)
+    neural-network))
 
 (defun get-output (neural-network)
   "Return the output layer of the NEURAL-NETWORK."

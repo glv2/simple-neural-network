@@ -20,52 +20,62 @@
 
 
 (test nn-xor
-  (let ((inputs '(#(0.0d0 0.0d0)
-                  #(0.0d0 1.0d0)
-                  #(1.0d0 0.0d0)
-                  #(1.0d0 1.0d0)))
-        (targets '(#(0.0d0)
-                   #(1.0d0)
-                   #(1.0d0)
-                   #(0.0d0)))
-        (nn (create-neural-network 2 1 4)))
-    (dotimes (i 30000)
-      (train nn inputs targets 0.5d0))
-    (flet ((same-value-p (output target)
-             (let ((x (aref output 0))
-                   (y (aref target 0)))
-               (= (if (< x 1/2) 0 1) y))))
+  (labels ((normalize (x)
+             (if (= x 1.0d0) 1.0d0 -1.0d0))
+           (denormalize (x)
+             (if (> x 0.0d0) 1.0d0 0.0d0))
+           (same-value-p (output target)
+             (= (denormalize (aref output 0))
+                (denormalize (aref target 0)))))
+    (let ((inputs (mapcar (lambda (v)
+                            (map 'vector #'normalize v))
+                          '(#(0.0d0 0.0d0)
+                            #(0.0d0 1.0d0)
+                            #(1.0d0 0.0d0)
+                            #(1.0d0 1.0d0))))
+          (targets (mapcar (lambda (v)
+                             (map 'vector #'normalize v))
+                           '(#(0.0d0)
+                             #(1.0d0)
+                             #(1.0d0)
+                             #(0.0d0))))
+          (nn (create-neural-network 2 1 4)))
+      (dotimes (i 2000)
+        (train nn inputs targets 0.01d0))
       (destructuring-bind (inputs targets)
           (loop
             repeat 10
             for x = (random 2)
             for y = (random 2)
-            collect (vector (float x 1.0d0) (float y 1.0d0)) into inputs
-            collect (vector (logxor x y)) into targets
+            collect (vector (normalize x) (normalize y)) into inputs
+            collect (vector (normalize (logxor x y))) into targets
             finally (return (list inputs targets)))
-        (is (= 1 (accuracy nn inputs targets :test #'same-value-p)))))))
+        (is (<= 4/5 (accuracy nn inputs targets :test #'same-value-p)))))))
 
 (test nn-cos
-  (let* ((limit (float (/ pi 2) 1.0d0))
-         (inputs (loop repeat 1000 collect (vector (random limit))))
-         (targets (mapcar (lambda (input)
-                            (vector (cos (aref input 0))))
-                          inputs))
-         (nn (create-neural-network 1 1 3 3)))
-    (dotimes (i 2000)
-      (train nn inputs targets 0.8d0))
-    (flet ((close-enough-p (output target)
+  (labels ((normalize (x)
+             (/ (float x 1.0d0) (float pi 1.0d0)))
+           (close-enough-p (output target)
              (let ((x (aref output 0))
                    (y (aref target 0)))
                (< (abs (- x y)) 0.02))))
-      (destructuring-bind (inputs targets)
-          (loop
-            repeat 10
-            for x = (random limit)
-            collect (vector x) into inputs
-            collect (vector (cos x)) into targets
-            finally (return (list inputs targets)))
-        (is (= 1 (accuracy nn inputs targets :test #'close-enough-p)))))))
+    (destructuring-bind (inputs targets)
+        (loop repeat 10000
+              for x = (- (random (* 2 pi)) pi)
+              collect (vector (normalize x)) into inputs
+              collect (vector (cos (float x 1.0d0))) into targets
+              finally (return (list inputs targets)))
+      (let ((nn (create-neural-network 1 1 3 3)))
+        (dotimes (i 100)
+          (train nn inputs targets 0.3d0))
+        (destructuring-bind (inputs targets)
+            (loop
+              repeat 10
+              for x = (- (random (* 2 pi)) pi)
+              collect (vector (normalize x)) into inputs
+              collect (vector (cos (float x 1.0d0))) into targets
+              finally (return (list inputs targets)))
+          (is (<= 4/5 (accuracy nn inputs targets :test #'close-enough-p))))))))
 
 (defun mnist-file-path (filename)
   (asdf:system-relative-pathname "simple-neural-network"
@@ -76,12 +86,12 @@
                            :element-type 'double-float
                            :initial-element 0.0d0)))
     (dotimes (i (* 28 28) image)
-      (setf (aref image i) (/ (aref data (+ offset i)) 255.0d0)))))
+      (setf (aref image i) (/ (- (aref data (+ offset i)) 128) 128.0d0)))))
 
 (defun mnist-read-and-normalize-label (data offset)
   (let ((target (make-array 10
                             :element-type 'double-float
-                            :initial-element 0.0d0))
+                            :initial-element -1.0d0))
         (category (aref data offset)))
     (setf (aref target category) 1.0d0)
     target))
@@ -113,9 +123,9 @@
 (test nn-mnist
   (let ((nn (create-neural-network (* 28 28) 10 128)))
     (multiple-value-bind (inputs targets) (mnist-load :train)
-      (train nn inputs targets 0.5d0))
+      (train nn inputs targets 0.003d0))
     (multiple-value-bind (inputs targets) (mnist-load :test)
-      (is (< 0.8 (accuracy nn inputs targets))))))
+      (is (<= 4/5 (accuracy nn inputs targets))))))
 
 (test store/restore
   (let ((nn1 (create-neural-network 3 2 4))

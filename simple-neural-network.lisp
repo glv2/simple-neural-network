@@ -28,40 +28,33 @@
 
 (declaim (inline activation))
 (defun activation (x)
-  "Sigmoid activation function for the neurons."
+  "Activation function for the neurons."
   (declare (type double-float x))
-  ;; Use some special cases to prevent possible floating point overflows when
-  ;; computing the exponential.
-  (cond
-    ((> x 100.0d0)
-     1.0d0)
-    ((< x -100.0d0)
-     0.0d0)
-    (t
-     (/ 1.0d0 (+ 1.0d0 (exp (- x)))))))
+  (tanh x))
 
 (declaim (inline activation-prime))
 (defun activation-prime (x)
   "Derivative of the activation function."
   (declare (type double-float x))
-  (* x (- 1.0d0 x)))
+  (- 1.0d0 (* x x)))
 
 (defun make-random-weights (input-size output-size)
-  "Generate a matrix (INPUT-SIZE * OUTPUT-SIZE) of random weights between -1
-and 1."
+  "Generate a matrix (OUTPUT-SIZE * INPUT-SIZE) of random weights."
   (let ((weights (make-array (* output-size input-size)
                              :element-type 'double-float
-                             :initial-element 0.0d0)))
+                             :initial-element 0.0d0))
+        (r (sqrt (/ 6.0d0 (+ input-size output-size)))))
     (dotimes (i (* output-size input-size) weights)
-      (setf (aref weights i) (1- (random 2.0d0))))))
+      (setf (aref weights i) (- (random (* 2.0d0 r)) r)))))
 
 (defun make-random-biases (size)
-  "Generate a vector of SIZE random biases between -1 and 1."
+  "Generate a vector of SIZE random biases."
   (let ((biases (make-array size
                             :element-type 'double-float
-                            :initial-element 0.0d0)))
+                            :initial-element 0.0d0))
+        (r (/ 1.0d0 (sqrt size))))
     (dotimes (i size biases)
-      (setf (aref biases i) (1- (random 2.0d0))))))
+      (setf (aref biases i) (- (random (* 2.0d0 r)) r)))))
 
 (defun create-neural-network (input-size output-size &rest hidden-layers-sizes)
   "Create a neural network having INPUT-SIZE inputs, OUTPUT-SIZE outputs, and

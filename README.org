@@ -1,6 +1,6 @@
 #+TITLE: Simple Neural Network
 #+AUTHOR: Guillaume Le Vaillant
-#+DATE: 2020-10-22
+#+DATE: 2020-10-23
 #+EMAIL: glv@posteo.net
 #+LANGUAGE: en
 #+OPTIONS: num:nil toc:nil html-postamble:nil html-scripts:nil
@@ -26,7 +26,7 @@ shorter /snn/ nickname if you prefer.
 
 The library works with double floats. Your inputs and targets must therefore be
 vectors of ~double-float~ numbers. For better results, they should also be
-normalized to contain values between 0 and 1.
+normalized to contain values between -1 and 1.
 
 If ~lparallel:*kernel*~ is set or bound, some computations will be done in
 parallel. This is only useful if the network is big enough, because the
@@ -109,29 +109,29 @@ Neural network for the XOR function:
 #+BEGIN_SRC lisp
 (asdf:load-system "simple-neural-network")
 
-(defvar inputs '(#(0.0d0 0.0d0)
-                 #(0.0d0 1.0d0)
-                 #(1.0d0 0.0d0)
-                 #(1.0d0 1.0d0)))
-(defvar targets '(#(0.0d0)
-                  #(1.0d0)
-                  #(1.0d0)
-                  #(0.0d0)))
+(defun normalize (input)
+  (map 'vector (lambda (x) (if (= x 1) 1.0d0 -1.0d0)) input))
+
+(defun denormalize (output)
+  (if (plusp (aref output 0)) 1 0))
+
+(defvar inputs (mapcar #'normalize '(#(0 0) #(0 1) #(1 0) #(1 1))))
+(defvar targets (mapcar #'normalize '(#(0) #(1) #(1) #(0))))
 (defvar nn (snn:create-neural-network 2 1 4))
-(dotimes (i 10000)
-  (snn:train nn inputs targets 0.5d0))
+(dotimes (i 2000)
+  (snn:train nn inputs targets 0.01d0))
 
-(snn:predict nn #(0.0d0 0.0d0))
--> #(0.008742797822178053d0)
+(denormalize (snn:predict nn (normalize #(0 0))))
+-> 0
 
-(snn:predict nn #(1.0d0 0.0d0))
--> #(0.9843829779784249d0)
+(denormalize (snn:predict nn (normalize #(1 0))))
+-> 1
 
-(snn:predict nn #(0.0d0 1.0d0))
--> #(0.9819689138450407d0)
+(denormalize (snn:predict nn (normalize #(0 1))))
+-> 1
 
-(snn:predict nn #(1.0d0 1.0d0))
--> #(0.020513774356581006d0)
+(denormalize (snn:predict nn (normalize #(1 1))))
+-> 0
 #+END_SRC
 
 
@@ -144,11 +144,11 @@ Neural network for the MNIST dataset, using parallelism (2 threads):
 (defvar nn (snn:create-neural-network 784 10 128))
 (multiple-value-bind (inputs targets) (mnist-load :train)
   (dotimes (i 3)
-    (snn:train nn inputs targets 0.5d0)))
+    (snn:train nn inputs targets 0.003d0)))
 
 (multiple-value-bind (inputs targets) (mnist-load :test)
   (snn:accuracy nn inputs targets))
--> 2393/2500
+-> 1191/1250
 #+END_SRC
 
 * Tests

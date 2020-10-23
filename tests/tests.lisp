@@ -66,8 +66,10 @@
               collect (vector (cos (float x 1.0d0))) into targets
               finally (return (list inputs targets)))
       (let ((nn (create-neural-network 1 1 3 3)))
-        (dotimes (i 100)
-          (train nn inputs targets 0.3d0))
+        (dotimes (i 5)
+          (train nn inputs targets 0.05d0))
+        (dotimes (i 10)
+          (train nn inputs targets 0.01d0))
         (destructuring-bind (inputs targets)
             (loop
               repeat 10

@@ -30,13 +30,13 @@
 (defun activation (x)
   "Activation function for the neurons."
   (declare (type double-float x))
-  (tanh x))
+  (* 1.7159d0 (tanh (* 2/3 x))))
 
 (declaim (inline activation-prime))
 (defun activation-prime (x)
   "Derivative of the activation function."
   (declare (type double-float x))
-  (- 1.0d0 (* x x)))
+  (- 1.1439d0 (* 0.38852d0 x x)))
 
 (defun make-random-weights (input-size output-size)
   "Generate a matrix (OUTPUT-SIZE * INPUT-SIZE) of random weights."

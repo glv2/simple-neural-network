@@ -89,8 +89,8 @@ Return the index of the greatest value in /values/.
 
 Return ~t~ if calls to ~index-of-max-value~ on /output/ and /target/ return the
 same value, and ~nil~ otherwise. This function is only useful when the neural
-network was trained to classify the inputs in several categories, when targets
-contain a single 1 and 0s.
+network was trained to classify the inputs in several categories (when targets
+contain a 1 for the correct category and and -1 for all the other categories).
 
 
 #+BEGIN_SRC lisp

@@ -33,10 +33,11 @@
   (* 1.7159d0 (tanh (* 2/3 x))))
 
 (declaim (inline activation-prime))
-(defun activation-prime (x)
+(defun activation-prime (y)
   "Derivative of the activation function."
-  (declare (type double-float x))
-  (- 1.1439d0 (* 0.38852d0 x x)))
+  (declare (type double-float y))
+  ;; Here Y is the result of (ACTIVATION X).
+  (- 1.1439d0 (* 0.38852d0 y y)))
 
 (defun make-random-weights (input-size output-size)
   "Generate a matrix (OUTPUT-SIZE * INPUT-SIZE) of random weights."

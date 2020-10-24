@@ -40,8 +40,8 @@
                              #(1.0d0)
                              #(0.0d0))))
           (nn (create-neural-network 2 1 4)))
-      (dotimes (i 2000)
-        (train nn inputs targets 0.01d0))
+      (dotimes (i 100)
+        (train nn inputs targets 0.05d0))
       (destructuring-bind (inputs targets)
           (loop
             repeat 10

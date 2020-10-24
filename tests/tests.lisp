@@ -58,21 +58,21 @@
            (close-enough-p (output target)
              (let ((x (aref output 0))
                    (y (aref target 0)))
-               (< (abs (- x y)) 0.02))))
+               (< (abs (/ (- x y) y)) 0.2))))
     (destructuring-bind (inputs targets)
-        (loop repeat 10000
+        (loop repeat 1000
               for x = (- (random (* 2 pi)) pi)
               collect (vector (normalize x)) into inputs
               collect (vector (cos (float x 1.0d0))) into targets
               finally (return (list inputs targets)))
       (let ((nn (create-neural-network 1 1 3 3)))
-        (dotimes (i 5)
-          (train nn inputs targets 0.05d0))
-        (dotimes (i 10)
+        (dotimes (i 30)
           (train nn inputs targets 0.01d0))
+        (dotimes (i 30)
+          (train nn inputs targets 0.005d0))
         (destructuring-bind (inputs targets)
             (loop
-              repeat 10
+              repeat 100
               for x = (- (random (* 2 pi)) pi)
               collect (vector (normalize x)) into inputs
               collect (vector (cos (float x 1.0d0))) into targets

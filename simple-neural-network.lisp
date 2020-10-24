@@ -30,7 +30,7 @@
 (defun activation (x)
   "Activation function for the neurons."
   (declare (type double-float x))
-  (* 1.7159d0 (tanh (* 2/3 x))))
+  (* 1.7159d0 (tanh (* 0.66667d0 x))))
 
 (declaim (inline activation-prime))
 (defun activation-prime (y)

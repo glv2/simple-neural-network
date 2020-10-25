@@ -92,7 +92,7 @@ biases."
   (let ((input-layer (first (neural-network-layers neural-network))))
     (declare (type double-float-array input-layer))
     (replace input-layer input)
-    neural-network))
+    (values)))
 
 (defun get-output (neural-network)
   "Return the output layer of the NEURAL-NETWORK."
@@ -138,11 +138,12 @@ layer."
                 (rest weights))
        (biases (neural-network-biases neural-network)
                (rest biases)))
-      ((endp weights) neural-network)
+      ((endp weights))
     (compute-values (first layers)
                     (second layers)
                     (first weights)
-                    (first biases))))
+                    (first biases)))
+  (values))
 
 (defun compute-output-delta (neural-network target)
   "Compute the error between the output layer of the NEURAL-NETWORK and the
@@ -151,7 +152,7 @@ TARGET."
   (let ((output (get-output neural-network))
         (delta (first (last (neural-network-deltas neural-network)))))
     (declare (type double-float-array output delta))
-    (dotimes (i (length output) delta)
+    (dotimes (i (length output))
       (let* ((value (aref output i))
              (diff (- value (aref target i))))
         (declare (type double-float value diff))
@@ -237,7 +238,7 @@ inputs."
     (mapc (lambda (gradient)
             (average-gradient gradient batch-size))
           (neural-network-gradients neural-network))
-    neural-network))
+    (values)))
 
 (defun backpropagate (neural-network)
   "Propagate the error of the output layer of the NEURAL-NETWORK back to the
@@ -250,7 +251,7 @@ first layer and compute the gradients."
                   (rest gradients))
        (deltas (reverse (neural-network-deltas neural-network))
                (rest deltas)))
-      ((endp deltas) neural-network)
+      ((endp deltas))
     (unless (endp (rest deltas))
       (compute-delta (first deltas)
                      (first layers)
@@ -258,7 +259,8 @@ first layer and compute the gradients."
                      (second deltas)))
     (add-gradients (first layers)
                    (first gradients)
-                   (first deltas))))
+                   (first deltas)))
+  (values))
 
 (defun update-weights (weights gradients learning-rate)
   "Update the WEIGHTS of a layer and clear the GRADIENTS."
@@ -287,7 +289,7 @@ first layer and compute the gradients."
         (neural-network-biases neural-network)
         (neural-network-gradients neural-network)
         (neural-network-deltas neural-network))
-  neural-network)
+  (values))
 
 (defun train (neural-network inputs targets learning-rate
               &optional (batch-size 1))
@@ -310,7 +312,7 @@ TARGETS. The weights are updated every BATCH-SIZE inputs."
       (propagate neural-network)
       (compute-output-delta neural-network (car targets))
       (backpropagate neural-network))
-    neural-network))
+    (values)))
 
 (defun predict (neural-network input &optional output)
   "Return the output computed by the NEURAL-NETWORK for a given INPUT. If
@@ -329,7 +331,8 @@ a pathname-designator."
     (cl-store:store (list layer-sizes
                           (neural-network-weights neural-network)
                           (neural-network-biases neural-network))
-                    place)))
+                    place)
+    (values)))
 
 (defun restore (place)
   "Restore the neural network stored in PLACE, which must be a stream or

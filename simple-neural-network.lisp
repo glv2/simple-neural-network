@@ -27,6 +27,9 @@
   gradients
   deltas)
 
+(defun make-double-float-array (size)
+  (make-array size :element-type 'double-float :initial-element 0.0d0))
+
 (declaim (inline activation))
 (defun activation (x)
   "Activation function for the neurons."
@@ -42,18 +45,14 @@
 
 (defun make-random-weights (input-size output-size)
   "Generate a matrix (OUTPUT-SIZE * INPUT-SIZE) of random weights."
-  (let ((weights (make-array (* output-size input-size)
-                             :element-type 'double-float
-                             :initial-element 0.0d0))
+  (let ((weights (make-double-float-array (* output-size input-size)))
         (r (sqrt (/ 6.0d0 (+ input-size output-size)))))
     (dotimes (i (* output-size input-size) weights)
       (setf (aref weights i) (- (random (* 2.0d0 r)) r)))))
 
 (defun make-random-biases (size)
   "Generate a vector of SIZE random biases."
-  (let ((biases (make-array size
-                            :element-type 'double-float
-                            :initial-element 0.0d0))
+  (let ((biases (make-double-float-array size))
         (r (/ 1.0d0 (sqrt size))))
     (dotimes (i size biases)
       (setf (aref biases i) (- (random (* 2.0d0 r)) r)))))
@@ -67,11 +66,7 @@ biases."
          (layer-sizes (append (list input-size)
                               hidden-layers-sizes
                               (list output-size)))
-         (layers (mapcar (lambda (size)
-                           (make-array size
-                                       :element-type 'double-float
-                                       :initial-element 0.0d0))
-                         layer-sizes))
+         (layers (mapcar #'make-double-float-array layer-sizes))
          (weights (butlast (maplist (lambda (sizes)
                                       (let ((input-size (first sizes))
                                             (output-size (second sizes)))
@@ -79,19 +74,11 @@ biases."
                                           (make-random-weights input-size
                                                                output-size))))
                                     layer-sizes)))
-         (biases (mapcar (lambda (size)
-                           (make-random-biases size))
-                         (rest layer-sizes)))
+         (biases (mapcar #'make-random-biases (rest layer-sizes)))
          (gradients (mapcar (lambda (weights)
-                              (make-array (length weights)
-                                          :element-type 'double-float
-                                          :initial-element 0.0d0))
+                              (make-double-float-array (length weights)))
                             weights))
-         (deltas (mapcar (lambda (size)
-                           (make-array size
-                                       :element-type 'double-float
-                                       :initial-element 0.0d0))
-                         (rest layer-sizes))))
+         (deltas (mapcar #'make-double-float-array (rest layer-sizes))))
     (make-neural-network :layers layers
                          :weights weights
                          :biases biases
@@ -331,22 +318,26 @@ allocated."
 (defun store (neural-network place)
   "Store the NEURAL-NETWORK to PLACE, which must be a stream or
 a pathname-designator."
-  ;; cl-store only supports serialization of structures on SBCL and CMUCL.
-  ;; Use a list instead to support other implementations.
-  (cl-store:store (list (neural-network-layers neural-network)
-                        (neural-network-weights neural-network)
-                        (neural-network-biases neural-network)
-                        (neural-network-deltas neural-network))
-                  place))
+  (let ((layer-sizes (mapcar #'length (neural-network-layers neural-network))))
+    (cl-store:store (list layer-sizes
+                          (neural-network-weights neural-network)
+                          (neural-network-biases neural-network))
+                    place)))
 
 (defun restore (place)
   "Restore the neural network stored in PLACE, which must be a stream or
 a pathname-designator."
-  (destructuring-bind (layers weights biases deltas) (cl-store:restore place)
-    (make-neural-network :layers layers
-                         :weights weights
-                         :biases biases
-                         :deltas deltas)))
+  (destructuring-bind (layer-sizes weights biases) (cl-store:restore place)
+    (let ((layers (mapcar #'make-double-float-array layer-sizes))
+          (gradients (mapcar (lambda (weights)
+                               (make-double-float-array (length weights)))
+                             weights))
+          (deltas (mapcar #'make-double-float-array (rest layer-sizes))))
+      (make-neural-network :layers layers
+                           :weights weights
+                           :biases biases
+                           :gradients gradients
+                           :deltas deltas))))
 
 (defun index-of-max-value (values)
   "Return the index of the greatest value in VALUES."

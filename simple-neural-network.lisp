@@ -28,6 +28,7 @@
   deltas)
 
 (defun make-double-float-array (size)
+  "Make a new array of SIZE double floats."
   (make-array size :element-type 'double-float :initial-element 0.0d0))
 
 (declaim (inline activation))
@@ -191,6 +192,8 @@ TARGET."
 
 (declaim (inline add-gradient))
 (defun add-gradient (input gradients delta index)
+  "Add the gradients computed for an input for the weights of the neuron at
+INDEX in a layer to the sum of the gradients for previous inputs."
   (declare (type double-float-array input gradients delta)
            (type fixnum index)
            (optimize (speed 3) (safety 0)))
@@ -204,6 +207,8 @@ TARGET."
       (incf (aref gradients (+ offset j)) (* (aref input j) gradient)))))
 
 (defun add-gradients (input gradients delta)
+  "Add the gradients computed for an input to sum of the gradients for previous
+inputs."
   (declare (type double-float-array input gradients delta)
            (optimize (speed 3) (safety 0)))
   (let ((delta-size (length delta)))
@@ -218,6 +223,7 @@ TARGET."
 
 (declaim (inline average-gradient))
 (defun average-gradient (gradient batch-size)
+  "Compute the average gradients for a layer."
   (declare (type double-float-array gradient)
            (type double-float batch-size)
            (optimize (speed 3) (safety 0)))
@@ -226,6 +232,7 @@ TARGET."
     (setf (aref gradient i) (/ (aref gradient i) batch-size))))
 
 (defun average-gradients (neural-network batch-size)
+  "Compute the average gradients for the whole NEURAL-NETWORK."
   (let ((batch-size (coerce batch-size 'double-float)))
     (mapc (lambda (gradient)
             (average-gradient gradient batch-size))
@@ -234,7 +241,7 @@ TARGET."
 
 (defun backpropagate (neural-network)
   "Propagate the error of the output layer of the NEURAL-NETWORK back to the
-first layer."
+first layer and compute the gradients."
   (do ((layers (rest (reverse (neural-network-layers neural-network)))
                (rest layers))
        (weights (reverse (neural-network-weights neural-network))

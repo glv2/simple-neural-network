@@ -24,6 +24,7 @@
   layers
   weights
   biases
+  gradients
   deltas)
 
 (declaim (inline activation))
@@ -81,6 +82,11 @@ biases."
          (biases (mapcar (lambda (size)
                            (make-random-biases size))
                          (rest layer-sizes)))
+         (gradients (mapcar (lambda (weights)
+                              (make-array (length weights)
+                                          :element-type 'double-float
+                                          :initial-element 0.0d0))
+                            weights))
          (deltas (mapcar (lambda (size)
                            (make-array size
                                        :element-type 'double-float
@@ -89,6 +95,7 @@ biases."
     (make-neural-network :layers layers
                          :weights weights
                          :biases biases
+                         :gradients gradients
                          :deltas deltas)))
 
 (defun set-input (neural-network input)
@@ -195,6 +202,49 @@ TARGET."
           (declare (type fixnum i))
           (compute-single-delta previous-delta output weights delta i)))))
 
+(declaim (inline add-gradient))
+(defun add-gradient (input gradients delta index)
+  (declare (type double-float-array input gradients delta)
+           (type fixnum index)
+           (optimize (speed 3) (safety 0)))
+  (let* ((input-size (length input))
+         (offset (the fixnum (* index input-size)))
+         (gradient (aref delta index)))
+    (declare (type fixnum input-size offset)
+             (type double-float gradient))
+    (dotimes (j input-size)
+      (declare (type fixnum j))
+      (incf (aref gradients (+ offset j)) (* (aref input j) gradient)))))
+
+(defun add-gradients (input gradients delta)
+  (declare (type double-float-array input gradients delta)
+           (optimize (speed 3) (safety 0)))
+  (let ((delta-size (length delta)))
+    (declare (type fixnum delta-size))
+    (if lparallel:*kernel*
+        (lparallel:pdotimes (i delta-size)
+          (declare (type fixnum i))
+          (add-gradient input gradients delta i))
+        (dotimes (i delta-size)
+          (declare (type fixnum i))
+          (add-gradient input gradients delta i)))))
+
+(declaim (inline average-gradient))
+(defun average-gradient (gradient batch-size)
+  (declare (type double-float-array gradient)
+           (type double-float batch-size)
+           (optimize (speed 3) (safety 0)))
+  (dotimes (i (length gradient))
+    (declare (type fixnum i))
+    (setf (aref gradient i) (/ (aref gradient i) batch-size))))
+
+(defun average-gradients (neural-network batch-size)
+  (let ((batch-size (coerce batch-size 'double-float)))
+    (mapc (lambda (gradient)
+            (average-gradient gradient batch-size))
+          (neural-network-gradients neural-network))
+    neural-network))
+
 (defun backpropagate (neural-network)
   "Propagate the error of the output layer of the NEURAL-NETWORK back to the
 first layer."
@@ -202,76 +252,70 @@ first layer."
                (rest layers))
        (weights (reverse (neural-network-weights neural-network))
                 (rest weights))
+       (gradients (reverse (neural-network-gradients neural-network))
+                  (rest gradients))
        (deltas (reverse (neural-network-deltas neural-network))
                (rest deltas)))
-      ((endp (rest deltas)) neural-network)
-    (compute-delta (first deltas)
-                   (first layers)
-                   (first weights)
-                   (second deltas))))
+      ((endp deltas) neural-network)
+    (unless (endp (rest deltas))
+      (compute-delta (first deltas)
+                     (first layers)
+                     (first weights)
+                     (second deltas)))
+    (add-gradients (first layers)
+                   (first gradients)
+                   (first deltas))))
 
-(declaim (inline update-weight))
-(defun update-weight (input weights delta learning-rate index)
-  "Update the WEIGHTS for the neuron at INDEX."
-  (declare (type double-float-array input weights delta)
-           (type double-float learning-rate)
-           (type fixnum index)
-           (optimize (speed 3) (safety 0)))
-  (let* ((input-size (length input))
-         (offset (the fixnum (* index input-size)))
-         (gradient (* learning-rate (aref delta index))))
-    (declare (type fixnum input-size offset)
-             (type double-float gradient))
-    (dotimes (j input-size)
-      (declare (type fixnum j))
-      (decf (aref weights (+ offset j)) (* (aref input j) gradient)))
-    (values)))
-
-(defun update-weights (input weights delta learning-rate)
-  "Update the WEIGHTS of a layer."
-  (declare (type double-float-array input weights delta)
+(defun update-weights (weights gradients learning-rate)
+  "Update the WEIGHTS of a layer and clear the GRADIENTS."
+  (declare (type double-float-array weights gradients)
            (type double-float learning-rate)
            (optimize (speed 3) (safety 0)))
-  (let ((delta-size (length delta)))
-    (declare (type fixnum delta-size))
-    (if lparallel:*kernel*
-        (lparallel:pdotimes (i delta-size)
-          (declare (type fixnum i))
-          (update-weight input weights delta learning-rate i))
-        (dotimes (i delta-size)
-          (declare (type fixnum i))
-          (update-weight input weights delta learning-rate i)))))
+  (dotimes (i (length weights))
+    (declare (type fixnum i))
+    (decf (aref weights i) (* learning-rate (aref gradients i)))
+    (setf (aref gradients i) 0.0d0)))
 
 (defun update-biases (biases delta learning-rate)
   "Update the BIASES of a layer."
   (declare (type double-float-array biases delta)
-           (type double-float learning-rate))
+           (type double-float learning-rate)
+           (optimize (speed 3) (safety 0)))
   (dotimes (i (length biases))
     (decf (aref biases i) (* learning-rate (aref delta i)))))
 
 (defun update-weights-and-biases (neural-network learning-rate)
   "Update all the weights and biases of the NEURAL-NETWORK."
-  (mapc (lambda (layer weights biases delta)
-          (update-weights layer weights delta learning-rate)
+  (mapc (lambda (weights biases gradients delta)
+          (update-weights weights gradients learning-rate)
           (update-biases biases delta learning-rate))
-        (neural-network-layers neural-network)
         (neural-network-weights neural-network)
         (neural-network-biases neural-network)
+        (neural-network-gradients neural-network)
         (neural-network-deltas neural-network))
   neural-network)
 
-(defun train (neural-network inputs targets learning-rate)
+(defun train (neural-network inputs targets learning-rate
+              &optional (batch-size 1))
   "Train the NEURAL-NETWORK at a given LEARNING-RATE using some INPUTS and
-TARGETS."
+TARGETS. The weights are updated every BATCH-SIZE inputs."
   (let ((learning-rate (coerce learning-rate 'double-float)))
-    (mapc (lambda (input target)
-            (set-input neural-network input)
-            (propagate neural-network)
-            (compute-output-delta neural-network target)
-            (backpropagate neural-network)
-            (update-weights-and-biases neural-network learning-rate))
-          inputs
-          targets)
+    (do ((inputs inputs (cdr inputs))
+         (targets targets (cdr targets))
+         (n 0 (1+ n)))
+        (nil)
+      (declare (type fixnum n))
+      (when (or (endp inputs) (= n batch-size))
+        (when (>= n 2)
+          (average-gradients neural-network n))
+        (update-weights-and-biases neural-network learning-rate)
+        (setf n 0)
+        (when (endp inputs)
+          (return)))
+      (set-input neural-network (car inputs))
+      (propagate neural-network)
+      (compute-output-delta neural-network (car targets))
+      (backpropagate neural-network))
     neural-network))
 
 (defun predict (neural-network input &optional output)

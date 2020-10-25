@@ -44,11 +44,11 @@ and biases.
 
 
 #+BEGIN_SRC lisp
-(train neural-network inputs targets learning-rate)
+(train neural-network inputs targets learning-rate &optional batch-size)
 #+END_SRC
 
 Train the /neural-network/ at a given /learning-rate/ using some /inputs/ and
-/targets/.
+/targets/. The weights are updated every /batch-size/ inputs.
 
 
 #+BEGIN_SRC lisp

@@ -5,7 +5,7 @@
 (defsystem "simple-neural-network"
   :name "simple-neural-network"
   :description "Simple neural network"
-  :version "1.1"
+  :version "2.0"
   :author "Guillaume Le Vaillant"
   :license "GPL-3"
   :depends-on ("cl-store" "lparallel")
@@ -14,7 +14,7 @@
 
 (defsystem "simple-neural-network/test"
   :depends-on ("chipz" "fiveam" "simple-neural-network" "uiop")
-  :version "1.1"
+  :version "2.0"
   :in-order-to ((test-op (load-op "simple-neural-network/test")))
   :perform (test-op (o s)
              (let ((tests (uiop:find-symbol* 'snn-tests

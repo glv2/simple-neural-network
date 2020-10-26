@@ -40,17 +40,9 @@
                              #(1.0d0)
                              #(0.0d0))))
           (nn (create-neural-network 2 1 4)))
-      (dotimes (i 100)
-        (train nn inputs targets 0.05d0))
-      (destructuring-bind (inputs targets)
-          (loop
-            repeat 10
-            for x = (random 2)
-            for y = (random 2)
-            collect (vector (normalize x) (normalize y)) into inputs
-            collect (vector (normalize (logxor x y))) into targets
-            finally (return (list inputs targets)))
-        (is (<= 4/5 (accuracy nn inputs targets :test #'same-value-p)))))))
+      (dotimes (i 1000)
+        (train nn inputs targets 0.01))
+      (is (= 1 (accuracy nn inputs targets :test #'same-value-p))))))
 
 (test nn-cos
   (labels ((normalize (x)

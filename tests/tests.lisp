@@ -19,7 +19,7 @@
 (in-suite snn-tests)
 
 
-(test nn-xor
+(test xor
   (labels ((normalize (x)
              (if (= x 1.0d0) 1.0d0 -1.0d0))
            (denormalize (x)
@@ -44,7 +44,7 @@
         (train nn inputs targets 0.01))
       (is (= 1 (accuracy nn inputs targets :test #'same-value-p))))))
 
-(test nn-cos
+(test cos
   (labels ((normalize (x)
              (/ (float x 1.0d0) (float pi 1.0d0)))
            (get-samples (n)
@@ -109,7 +109,7 @@
                                                                     (+ 8 i)))))))
       (values images labels))))
 
-(test nn-mnist
+(test mnist
   (let ((nn (create-neural-network (* 28 28) 10 128)))
     (multiple-value-bind (inputs targets) (mnist-load :train)
       (train nn inputs targets 0.003d0))

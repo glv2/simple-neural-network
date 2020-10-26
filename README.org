@@ -109,6 +109,14 @@ it with some /inputs/ and /targets/. /test/ must be a function taking an output
 and a target returning ~t~ if the output is considered to be close enough to
 the target, and ~nil~ otherwise. ~same-category-p~ is used by default.
 
+
+#+BEGIN_SRC lisp
+(mean-absolute-error neural-network inputs targets)
+#+END_SRC
+
+Return the mean absolute error on the outputs computed by the /neural-network/
+when testing it with some /inputs/ and /targets/.
+
 * Examples
 
 Neural network for the XOR function:

@@ -13,7 +13,8 @@
            #:copy
            #:index-of-max-value
            #:same-category-p
-           #:accuracy))
+           #:accuracy
+           #:mean-absolute-error))
 
 (in-package :simple-neural-network)
 
@@ -389,9 +390,21 @@ a target returning T if the output is considered to be close enough to the
 target, and NIL otherwise. SAME-CATEGORY-P is used by default."
   (let* ((output (copy-seq (get-output neural-network)))
          (guesses (mapcar (lambda (input target)
-                            (funcall test
-                                     (predict neural-network input output)
-                                     target))
+                            (predict neural-network input output)
+                            (funcall test output target))
                          inputs
                          targets)))
     (/ (count t guesses) (length inputs))))
+
+(defun mean-absolute-error (neural-network inputs targets)
+  "Return the mean absolute error on the outputs computed by the NEURAL-NETWORK
+when testing it with some INPUTS and TARGETS."
+  (let* ((output (copy-seq (get-output neural-network)))
+         (output-size (length output))
+         (err (copy-seq output)))
+    (flet ((compute-error (input target)
+             (predict neural-network input output)
+             (map-into err (lambda (x y) (abs (- x y))) output target)
+             (reduce #'+ err)))
+      (/ (reduce #'+ (mapcar #'compute-error inputs targets))
+         (* (length inputs) output-size)))))

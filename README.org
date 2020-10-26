@@ -77,6 +77,13 @@ a pathname-designator.
 
 
 #+BEGIN_SRC lisp
+(copy neural-network)
+#+END_SRC
+
+Return a copy of the /neural-network/.
+
+
+#+BEGIN_SRC lisp
 (index-of-max-value values)
 #+END_SRC
 

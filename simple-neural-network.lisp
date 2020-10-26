@@ -10,6 +10,7 @@
            #:predict
            #:store
            #:restore
+           #:copy
            #:index-of-max-value
            #:same-category-p
            #:accuracy))
@@ -350,6 +351,19 @@ a pathname-designator."
                            :biases biases
                            :gradients gradients
                            :deltas deltas))))
+
+(defun copy (neural-network)
+  "Return a copy of the NEURAL-NETWORK."
+  (let ((layers (neural-network-layers neural-network))
+        (weights (neural-network-weights neural-network))
+        (biases (neural-network-biases neural-network))
+        (gradients (neural-network-gradients neural-network))
+        (deltas (neural-network-deltas neural-network)))
+    (make-neural-network :layers (mapcar #'copy-seq layers)
+                         :weights (mapcar #'copy-seq weights)
+                         :biases (mapcar #'copy-seq biases)
+                         :gradients (mapcar #'copy-seq gradients)
+                         :deltas (mapcar #'copy-seq deltas))))
 
 (defun index-of-max-value (values)
   "Return the index of the greatest value in VALUES."

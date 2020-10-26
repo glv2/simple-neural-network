@@ -300,8 +300,8 @@ first layer and compute the gradients."
   "Train the NEURAL-NETWORK at a given LEARNING-RATE using some INPUTS and
 TARGETS. The weights are updated every BATCH-SIZE inputs."
   (let ((learning-rate (coerce learning-rate 'double-float)))
-    (do ((inputs inputs (cdr inputs))
-         (targets targets (cdr targets))
+    (do ((inputs inputs (rest inputs))
+         (targets targets (rest targets))
          (n 0 (1+ n)))
         (nil)
       (declare (type fixnum n))
@@ -312,9 +312,9 @@ TARGETS. The weights are updated every BATCH-SIZE inputs."
         (setf n 0)
         (when (endp inputs)
           (return)))
-      (set-input neural-network (car inputs))
+      (set-input neural-network (first inputs))
       (propagate neural-network)
-      (compute-output-delta neural-network (car targets))
+      (compute-output-delta neural-network (first targets))
       (backpropagate neural-network))
     (values)))
 
@@ -388,23 +388,27 @@ value, and NIL otherwise."
 it with some INPUTS and TARGETS. TEST must be a function taking an output and
 a target returning T if the output is considered to be close enough to the
 target, and NIL otherwise. SAME-CATEGORY-P is used by default."
-  (let* ((output (copy-seq (get-output neural-network)))
-         (guesses (mapcar (lambda (input target)
-                            (predict neural-network input output)
-                            (funcall test output target))
-                         inputs
-                         targets)))
-    (/ (count t guesses) (length inputs))))
+  (let ((output (copy-seq (get-output neural-network))))
+    (do ((inputs inputs (rest inputs))
+         (targets targets (rest targets))
+         (good-guesses 0)
+         (n 0 (1+ n)))
+        ((endp inputs) (/ good-guesses n))
+      (predict neural-network (first inputs) output)
+      (when (funcall test output (first targets))
+        (incf good-guesses)))))
 
 (defun mean-absolute-error (neural-network inputs targets)
   "Return the mean absolute error on the outputs computed by the NEURAL-NETWORK
 when testing it with some INPUTS and TARGETS."
   (let* ((output (copy-seq (get-output neural-network)))
          (output-size (length output))
-         (err (copy-seq output)))
-    (flet ((compute-error (input target)
-             (predict neural-network input output)
-             (map-into err (lambda (x y) (abs (- x y))) output target)
-             (reduce #'+ err)))
-      (/ (reduce #'+ (mapcar #'compute-error inputs targets))
-         (* (length inputs) output-size)))))
+         (output-error (copy-seq output)))
+    (do ((inputs inputs (rest inputs))
+         (targets targets (rest targets))
+         (total-error 0)
+         (n 0 (1+ n)))
+        ((endp inputs) (/ total-error (* n output-size)))
+      (predict neural-network (first inputs) output)
+      (map-into output-error #'- output (first targets))
+      (incf total-error (reduce #'+ output-error :key #'abs)))))

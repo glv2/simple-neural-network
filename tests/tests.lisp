@@ -55,16 +55,13 @@
 (test nn-cos
   (labels ((normalize (x)
              (/ (float x 1.0d0) (float pi 1.0d0)))
-           (close-enough-p (output target)
-             (let ((x (aref output 0))
-                   (y (aref target 0)))
-               (< (abs (/ (- x y) y)) 0.1))))
-    (destructuring-bind (inputs targets)
-        (loop repeat 1000
-              for x = (- (random (* 2 pi)) pi)
-              collect (vector (normalize x)) into inputs
-              collect (vector (cos (float x 1.0d0))) into targets
-              finally (return (list inputs targets)))
+           (get-samples (n)
+             (loop repeat n
+                   for x = (- (random (* 2 pi)) pi)
+                   collect (vector (normalize x)) into inputs
+                   collect (vector (cos (float x 1.0d0))) into targets
+                   finally (return (list inputs targets)))))
+    (destructuring-bind (inputs targets) (get-samples 1000)
       (let ((nn (create-neural-network 1 1 10 10)))
         (dotimes (i 20)
           (train nn inputs targets 0.03 10))
@@ -74,14 +71,8 @@
           (train nn inputs targets 0.01d0 10))
         (dotimes (i 20)
           (train nn inputs targets 0.005d0 10))
-        (destructuring-bind (inputs targets)
-            (loop
-              repeat 100
-              for x = (- (random (* 2 pi)) pi)
-              collect (vector (normalize x)) into inputs
-              collect (vector (cos (float x 1.0d0))) into targets
-              finally (return (list inputs targets)))
-          (is (<= 4/5 (accuracy nn inputs targets :test #'close-enough-p))))))))
+        (destructuring-bind (inputs targets) (get-samples 100)
+          (is (>= 0.04 (mean-absolute-error nn inputs targets))))))))
 
 (defun mnist-file-path (filename)
   (asdf:system-relative-pathname "simple-neural-network"

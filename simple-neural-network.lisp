@@ -33,6 +33,18 @@
   "Make a new array of SIZE double floats."
   (make-array size :element-type 'double-float :initial-element 0.0d0))
 
+(defmacro %dotimes ((var count &optional result) &body body)
+  `(if lparallel:*kernel*
+       (lparallel:pdotimes (,var ,count ,result)
+         ,@body)
+       (dotimes (,var ,count ,result)
+         ,@body)))
+
+(defmacro %mapc (function list &rest more-lists)
+  `(if lparallel:*kernel*
+       (lparallel:pmapc ,function ,list ,@more-lists)
+       (mapc ,function ,list ,@more-lists)))
+
 (declaim (inline activation))
 (defun activation (x)
   "Activation function for the neurons."
@@ -124,13 +136,9 @@ biases."
            (optimize (speed 3) (safety 0)))
   (let ((output-size (length output)))
     (declare (type fixnum output-size))
-    (if lparallel:*kernel*
-        (lparallel:pdotimes (i output-size)
-          (declare (type fixnum i))
-          (compute-value input output weights biases i))
-        (dotimes (i output-size)
-          (declare (type fixnum i))
-          (compute-value input output weights biases i)))))
+    (%dotimes (i output-size)
+      (declare (type fixnum i))
+      (compute-value input output weights biases i))))
 
 (defun propagate (neural-network)
   "Propagate the values of the input layer of the NEURAL-NETWORK to the output
@@ -186,13 +194,9 @@ TARGET."
            (optimize (speed 3) (safety 0)))
   (let ((delta-size (length delta)))
     (declare (type fixnum delta-size))
-    (if lparallel:*kernel*
-        (lparallel:pdotimes (i delta-size delta)
-          (declare (type fixnum i))
-          (compute-single-delta previous-delta output weights delta i))
-        (dotimes (i delta-size delta)
-          (declare (type fixnum i))
-          (compute-single-delta previous-delta output weights delta i)))))
+    (%dotimes (i delta-size delta)
+      (declare (type fixnum i))
+      (compute-single-delta previous-delta output weights delta i))))
 
 (declaim (inline add-gradient))
 (defun add-gradient (input gradients delta index)
@@ -218,13 +222,9 @@ inputs."
            (optimize (speed 3) (safety 0)))
   (let ((delta-size (length delta)))
     (declare (type fixnum delta-size))
-    (if lparallel:*kernel*
-        (lparallel:pdotimes (i delta-size)
-          (declare (type fixnum i))
-          (add-gradient input gradients delta i))
-        (dotimes (i delta-size)
-          (declare (type fixnum i))
-          (add-gradient input gradients delta i)))))
+    (%dotimes (i delta-size)
+      (declare (type fixnum i))
+      (add-gradient input gradients delta i))))
 
 (declaim (inline average-gradient))
 (defun average-gradient (gradient batch-size)
@@ -239,9 +239,9 @@ inputs."
 (defun average-gradients (neural-network batch-size)
   "Compute the average gradients for the whole NEURAL-NETWORK."
   (let ((batch-size (coerce batch-size 'double-float)))
-    (mapc (lambda (gradient)
-            (average-gradient gradient batch-size))
-          (neural-network-gradients neural-network))
+    (%mapc (lambda (gradient)
+             (average-gradient gradient batch-size))
+           (neural-network-gradients neural-network))
     (values)))
 
 (defun backpropagate (neural-network)
@@ -286,13 +286,13 @@ first layer and compute the gradients."
 
 (defun update-weights-and-biases (neural-network learning-rate)
   "Update all the weights and biases of the NEURAL-NETWORK."
-  (mapc (lambda (weights biases gradients delta)
-          (update-weights weights gradients learning-rate)
-          (update-biases biases delta learning-rate))
-        (neural-network-weights neural-network)
-        (neural-network-biases neural-network)
-        (neural-network-gradients neural-network)
-        (neural-network-deltas neural-network))
+  (%mapc (lambda (weights biases gradients delta)
+           (update-weights weights gradients learning-rate)
+           (update-biases biases delta learning-rate))
+         (neural-network-weights neural-network)
+         (neural-network-biases neural-network)
+         (neural-network-gradients neural-network)
+         (neural-network-deltas neural-network))
   (values))
 
 (defun train (neural-network inputs targets learning-rate

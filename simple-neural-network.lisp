@@ -14,7 +14,8 @@
            #:index-of-max-value
            #:same-category-p
            #:accuracy
-           #:mean-absolute-error))
+           #:mean-absolute-error
+           #:find-normalization))
 
 (in-package :simple-neural-network)
 
@@ -412,3 +413,59 @@ when testing it with some INPUTS and TARGETS."
       (predict neural-network (first inputs) output)
       (map-into output-error #'- output (first targets))
       (incf total-error (reduce #'+ output-error :key #'abs)))))
+
+(defun means (inputs)
+  "Return the means of the variables of the INPUTS."
+  (let* ((n (length inputs))
+         (input-size (length (first inputs)))
+         (results (make-double-float-array input-size)))
+    (assert (plusp n))
+    (dolist (input inputs)
+      (dotimes (i input-size)
+        (incf (aref results i) (aref input i))))
+    (dotimes (i input-size results)
+      (setf (aref results i) (/ (aref results i) n)))))
+
+(defun standard-deviations (inputs means)
+  "Return the standard deviations of the variables of the INPUTS."
+  (let* ((n (length inputs))
+         (input-size (length means))
+         (results (make-double-float-array input-size)))
+    (assert (>= n 2))
+    (dolist (input inputs)
+      (dotimes (i input-size)
+        (let ((x (- (aref input i) (aref means i))))
+          (incf (aref results i) (* x x)))))
+    (dotimes (i input-size results)
+      (setf (aref results i) (sqrt (/ (aref results i) (1- n)))))))
+
+(defun normalize (input means standard-deviations)
+  "Return a normalized variant of the INPUT."
+  (map 'double-float-array
+       (lambda (x m a)
+         (if (zerop a) (- x m) (/ (- x m) a)))
+       input
+       means
+       standard-deviations))
+
+(defun denormalize (input means standard-deviations)
+  "Return the original input computed from its normalized variant."
+  (map 'double-float-array
+       (lambda (x m a)
+         (if (zerop a) (+ x m) (+ (* x a) m)))
+       input
+       means
+       standard-deviations))
+
+(defun find-normalization (inputs)
+  "Return two values. The first is a normalization function that can then be
+applied to the inputs to build a data set in which each variable has mean 0 and
+standard deviation 1. The second is a denormalization function that can compute
+the original input from the normalized one."
+  (let* ((means (means inputs))
+         (standard-deviations (standard-deviations inputs means))
+         (normalize (lambda (input)
+                      (normalize input means standard-deviations)))
+         (denormalize (lambda (input)
+                        (denormalize input means standard-deviations))))
+    (values normalize denormalize)))

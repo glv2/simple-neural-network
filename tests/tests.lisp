@@ -155,3 +155,16 @@
                   (neural-network-weights nn2)))
       (is (equalp (neural-network-biases nn1)
                   (neural-network-biases nn2))))))
+
+(test normalization/denormalization
+  (let ((inputs '(#(1.0d0 1.0d0 1.0d0)
+                  #(2.0d0 1.0d1 -1.0d0)
+                  #(3.0d0 1.0d2 2.0d0)
+                  #(4.0d0 1.0d3 -2.0d0)
+                  #(5.0d0 1.0d4 3.0d0))))
+    (multiple-value-bind (normalize denormalize) (find-normalization inputs)
+      (let* ((normalized-inputs (mapcar normalize inputs))
+             (denormalized-inputs (mapcar denormalize normalized-inputs)))
+        (mapc (lambda (x y) (is (equalp x y)))
+              inputs
+              denormalized-inputs)))))

@@ -116,9 +116,9 @@
 (test mnist
   (let ((nn (create-neural-network (* 28 28) 10 128)))
     (multiple-value-bind (inputs targets) (mnist-load :train)
-      (train nn inputs targets 0.003d0))
+      (train nn inputs targets 0.006d0))
     (multiple-value-bind (inputs targets) (mnist-load :test)
-      (is (<= 4/5 (accuracy nn inputs targets))))))
+      (is (<= 85/100 (accuracy nn inputs targets))))))
 
 (test store/restore
   (let ((nn1 (create-neural-network 3 2 4))

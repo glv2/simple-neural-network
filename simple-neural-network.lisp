@@ -459,10 +459,11 @@ when testing it with some INPUTS and TARGETS."
        standard-deviations))
 
 (defun find-normalization (inputs)
-  "Return two values. The first is a normalization function that can then be
-applied to the inputs to build a data set in which each variable has mean 0 and
-standard deviation 1. The second is a denormalization function that can compute
-the original input from the normalized one."
+  "Return two values. The first is a normalization function taking a input and
+returning a normalized input. Applying this normalization function to the
+inputs gives a data set in which each variable has mean 0 and standard
+deviation 1. The second is a denormalization function that can compute the
+original input from the normalized one."
   (let* ((means (means inputs))
          (standard-deviations (standard-deviations inputs means))
          (normalize (lambda (input)

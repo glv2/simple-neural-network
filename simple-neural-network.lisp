@@ -15,7 +15,8 @@
            #:same-category-p
            #:accuracy
            #:mean-absolute-error
-           #:find-normalization))
+           #:find-normalization
+           #:find-learning-rate))
 
 (in-package :simple-neural-network)
 
@@ -469,3 +470,27 @@ the original input from the normalized one."
          (denormalize (lambda (input)
                         (denormalize input means standard-deviations))))
     (values normalize denormalize)))
+
+(defun find-learning-rate (neural-network inputs targets
+                           &key (batch-size 1) (epochs 1) (iterations 10))
+  "Return the best learing rate found in ITERATIONS steps of dichotomic search
+(between 0 and 1). In each step, the NEURAL-NETWORK is trained EPOCHS times
+using some INPUTS, TARGETS and BATCH-SIZE."
+  (labels ((cost (learning-rate)
+             (let ((nn (copy neural-network)))
+               (dotimes (i epochs)
+                 (train nn inputs targets learning-rate batch-size))
+               (mean-absolute-error nn inputs targets)))
+           (middle (x y)
+             (/ (+ x y) 2.0d0))
+           (stp (i low a m b high cost-a cost-b best)
+             (cond
+               ((zerop i)
+                best)
+               ((> cost-a cost-b)
+                (let ((d (middle b high)))
+                  (stp (1- i) m b (middle m high) d high cost-b (cost d) b)))
+               (t
+                (let ((d (middle low a)))
+                  (stp (1- i) low d (middle low m) a m (cost d) cost-a a))))))
+    (stp iterations 0 1/3 1/2 2/3 1 (cost 1/3) (cost 2/3) nil)))

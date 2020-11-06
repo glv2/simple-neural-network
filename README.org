@@ -119,6 +119,7 @@ the target, and ~nil~ otherwise. ~same-category-p~ is used by default.
 Return the mean absolute error on the outputs computed by the /neural-network/
 when testing it with some /inputs/ and /targets/.
 
+
 #+BEGIN_SRC lisp
 (find-normalization inputs)
 #+END_SRC
@@ -127,6 +128,15 @@ Return two values. The first is a normalization function that can then be
 applied to the inputs to build a data set in which each variable has mean 0 and
 standard deviation 1. The second is a denormalization function that can compute
 the original input from the normalized one.
+
+
+#+BEGIN_SRC lisp
+(find-learning-rate neural-network inputs targets &key batch-size epochs iterations)
+#+END_SRC
+
+Return the best learing rate found in /iterations/ steps of dichotomic search
+(between 0 and 1). In each step, the /neural-network/ is trained /epochs/ times
+using some /inputs/, /targets/ and /batch-size/.
 
 * Examples
 

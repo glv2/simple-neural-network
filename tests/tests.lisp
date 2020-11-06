@@ -45,26 +45,30 @@
       (is (= 1 (accuracy nn inputs targets :test #'same-value-p))))))
 
 (test cos
-  (labels ((normalize (x)
-             (/ (float x 1.0d0) (float pi 1.0d0)))
-           (get-samples (n)
-             (loop repeat n
-                   for x = (- (random (* 2 pi)) pi)
-                   collect (vector (normalize x)) into inputs
-                   collect (vector (cos (float x 1.0d0))) into targets
-                   finally (return (list inputs targets)))))
+  (flet ((get-samples (n)
+           (loop repeat n
+                 for x = (float (- (random (* 2 pi)) pi) 1.0d0)
+                 collect (vector x) into inputs
+                 collect (vector (cos x)) into targets
+                 finally (return (list inputs targets)))))
     (destructuring-bind (inputs targets) (get-samples 1000)
-      (let ((nn (create-neural-network 1 1 10 10)))
-        (dotimes (i 20)
-          (train nn inputs targets 0.03 10))
-        (dotimes (i 20)
-          (train nn inputs targets 0.02d0 10))
-        (dotimes (i 20)
-          (train nn inputs targets 0.01d0 10))
-        (dotimes (i 20)
-          (train nn inputs targets 0.005d0 10))
-        (destructuring-bind (inputs targets) (get-samples 100)
-          (is (>= 0.04 (mean-absolute-error nn inputs targets))))))))
+      (multiple-value-bind (normalize denormalize) (find-normalization inputs)
+        (let ((inputs (mapcar normalize inputs))
+              (targets (mapcar normalize targets))
+              (nn (create-neural-network 1 1 10 10))
+              (close-enough-p (lambda (output target)
+                                (let ((x (aref (funcall denormalize output) 0))
+                                      (y (aref (funcall denormalize target) 0)))
+                                  (<= (abs (/ (- x y) y)) 0.1)))))
+          (dotimes (i 1000)
+            (let ((learning-rate (/ 0.2 (1+ (* 0.1 i))))
+                  (batch-size (max 1 (floor i 100))))
+              (train nn inputs targets learning-rate batch-size)))
+          (destructuring-bind (inputs targets) (get-samples 100)
+            (let ((inputs (mapcar normalize inputs))
+                  (targets (mapcar normalize targets)))
+              (is (<= 4/5 (accuracy nn inputs targets
+                                    :test close-enough-p))))))))))
 
 (defun mnist-file-path (filename)
   (asdf:system-relative-pathname "simple-neural-network"

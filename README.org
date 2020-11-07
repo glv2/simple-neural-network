@@ -188,7 +188,7 @@ Neural network for the MNIST dataset, using parallelism (2 threads):
 
 (multiple-value-bind (inputs targets) (mnist-load :test)
   (snn:accuracy nn inputs targets))
--> 1191/1250
+-> 1911/2000
 #+END_SRC
 
 * Tests

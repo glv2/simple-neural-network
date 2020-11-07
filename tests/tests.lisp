@@ -63,7 +63,7 @@
           (dotimes (i 1000)
             (let ((learning-rate (/ 0.2 (1+ (* 0.1 i))))
                   (batch-size (max 1 (floor i 100))))
-              (train nn inputs targets learning-rate batch-size)))
+              (train nn inputs targets learning-rate :batch-size batch-size)))
           (destructuring-bind (inputs targets) (get-samples 100)
             (let ((inputs (mapcar normalize inputs))
                   (targets (mapcar normalize targets)))

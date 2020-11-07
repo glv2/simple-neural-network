@@ -46,11 +46,13 @@ and biases.
 
 
 #+BEGIN_SRC lisp
-(train neural-network inputs targets learning-rate &optional batch-size)
+(train neural-network inputs targets learning-rate
+       &key batch-size momentum-coefficient)
 #+END_SRC
 
-Train the /neural-network/ at a given /learning-rate/ using some /inputs/ and
-/targets/. The weights are updated every /batch-size/ inputs.
+Train the /neural-network/ with the given /learning-rate/ and
+/momentum-coefficient/ using some /inputs/ and /targets/. The weights are
+updated every /batch-size/ inputs.
 
 
 #+BEGIN_SRC lisp
@@ -132,12 +134,13 @@ original input from the normalized one.
 
 
 #+BEGIN_SRC lisp
-(find-learning-rate neural-network inputs targets &key batch-size epochs iterations)
+(find-learning-rate neural-network inputs targets
+                    &key batch-size momentum-coefficient epochs iterations)
 #+END_SRC
 
 Return the best learing rate found in /iterations/ steps of dichotomic search
 (between 0 and 1). In each step, the /neural-network/ is trained /epochs/ times
-using some /inputs/, /targets/ and /batch-size/.
+using some /inputs/, /targets/, /batch-size/ and /momentum-coefficient/.
 
 * Examples
 

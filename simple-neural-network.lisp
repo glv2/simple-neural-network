@@ -29,6 +29,7 @@
   weights
   biases
   gradients
+  momentums
   deltas)
 
 (defun make-double-float-array (size)
@@ -95,11 +96,15 @@ biases."
          (gradients (mapcar (lambda (weights)
                               (make-double-float-array (length weights)))
                             weights))
+         (momentums (mapcar (lambda (weights)
+                              (make-double-float-array (length weights)))
+                            weights))
          (deltas (mapcar #'make-double-float-array (rest layer-sizes))))
     (make-neural-network :layers layers
                          :weights weights
                          :biases biases
                          :gradients gradients
+                         :momentums momentums
                          :deltas deltas)))
 
 (defun set-input (neural-network input)
@@ -268,15 +273,33 @@ first layer and compute the gradients."
                    (first deltas)))
   (values))
 
-(defun update-weights (weights gradients learning-rate)
-  "Update the WEIGHTS of a layer and clear the GRADIENTS."
-  (declare (type double-float-array weights gradients)
-           (type double-float learning-rate)
+(defun clear-momentums (neural-network)
+  "Reset all the momentums to 0."
+  (declare (optimize (speed 3) (safety 0)))
+  (%mapc (lambda (momentums)
+           (declare (type double-float-array momentums))
+           (dotimes (i (length momentums))
+             (declare (type fixnum i))
+             (setf (aref momentums i) 0.0d0)))
+         (neural-network-momentums neural-network))
+  (values))
+
+(defun update-weights (weights gradients momentums learning-rate
+                       momentum-coefficient)
+  "Update the WEIGHTS and MOMENTUMS of a layer and clear the GRADIENTS."
+  (declare (type double-float-array weights gradients momentums)
+           (type double-float learning-rate momentum-coefficient)
            (optimize (speed 3) (safety 0)))
-  (dotimes (i (length weights))
-    (declare (type fixnum i))
-    (decf (aref weights i) (* learning-rate (aref gradients i)))
-    (setf (aref gradients i) 0.0d0)))
+  (let ((gradient-coefficient (* learning-rate (- 1.0d0 momentum-coefficient))))
+    (declare (type double-float gradient-coefficient))
+    (dotimes (i (length weights))
+      (declare (type fixnum i))
+      (let ((momentum (+ (* gradient-coefficient (aref gradients i))
+                         (* momentum-coefficient (aref momentums i)))))
+        (declare (type double-float momentum))
+        (decf (aref weights i) momentum)
+        (setf (aref momentums i) momentum)
+        (setf (aref gradients i) 0.0d0)))))
 
 (defun update-biases (biases delta learning-rate)
   "Update the BIASES of a layer."
@@ -286,22 +309,28 @@ first layer and compute the gradients."
   (dotimes (i (length biases))
     (decf (aref biases i) (* learning-rate (aref delta i)))))
 
-(defun update-weights-and-biases (neural-network learning-rate)
+(defun update-weights-and-biases (neural-network learning-rate
+                                  momentum-coefficient)
   "Update all the weights and biases of the NEURAL-NETWORK."
-  (%mapc (lambda (weights biases gradients delta)
-           (update-weights weights gradients learning-rate)
+  (%mapc (lambda (weights biases gradients momentums delta)
+           (update-weights weights gradients momentums
+                           learning-rate momentum-coefficient)
            (update-biases biases delta learning-rate))
          (neural-network-weights neural-network)
          (neural-network-biases neural-network)
          (neural-network-gradients neural-network)
+         (neural-network-momentums neural-network)
          (neural-network-deltas neural-network))
   (values))
 
 (defun train (neural-network inputs targets learning-rate
-              &optional (batch-size 1))
-  "Train the NEURAL-NETWORK at a given LEARNING-RATE using some INPUTS and
-TARGETS. The weights are updated every BATCH-SIZE inputs."
-  (let ((learning-rate (coerce learning-rate 'double-float)))
+              &key (batch-size 1) (momentum-coefficient 0.9))
+  "Train the NEURAL-NETWORK with the given LEARNING-RATE and
+MOMENTUM-COEFFICIENT using some INPUTS and TARGETS. The weights are updated
+every BATCH-SIZE inputs."
+  (let ((learning-rate (coerce learning-rate 'double-float))
+        (momentum-coefficient (coerce momentum-coefficient 'double-float)))
+    (clear-momentums neural-network)
     (do ((inputs inputs (rest inputs))
          (targets targets (rest targets))
          (n 0 (1+ n)))
@@ -310,7 +339,9 @@ TARGETS. The weights are updated every BATCH-SIZE inputs."
       (when (or (endp inputs) (= n batch-size))
         (when (>= n 2)
           (average-gradients neural-network n))
-        (update-weights-and-biases neural-network learning-rate)
+        (update-weights-and-biases neural-network
+                                   learning-rate
+                                   momentum-coefficient)
         (setf n 0)
         (when (endp inputs)
           (return)))
@@ -348,11 +379,15 @@ a pathname-designator."
           (gradients (mapcar (lambda (weights)
                                (make-double-float-array (length weights)))
                              weights))
+          (momentums (mapcar (lambda (weights)
+                               (make-double-float-array (length weights)))
+                             weights))
           (deltas (mapcar #'make-double-float-array (rest layer-sizes))))
       (make-neural-network :layers layers
                            :weights weights
                            :biases biases
                            :gradients gradients
+                           :momentums momentums
                            :deltas deltas))))
 
 (defun copy (neural-network)
@@ -361,11 +396,13 @@ a pathname-designator."
         (weights (neural-network-weights neural-network))
         (biases (neural-network-biases neural-network))
         (gradients (neural-network-gradients neural-network))
+        (momentums (neural-network-momentums neural-network))
         (deltas (neural-network-deltas neural-network)))
     (make-neural-network :layers (mapcar #'copy-seq layers)
                          :weights (mapcar #'copy-seq weights)
                          :biases (mapcar #'copy-seq biases)
                          :gradients (mapcar #'copy-seq gradients)
+                         :momentums (mapcar #'copy-seq momentums)
                          :deltas (mapcar #'copy-seq deltas))))
 
 (defun index-of-max-value (values)
@@ -473,14 +510,17 @@ original input from the normalized one."
     (values normalize denormalize)))
 
 (defun find-learning-rate (neural-network inputs targets
-                           &key (batch-size 1) (epochs 1) (iterations 10))
+                           &key (batch-size 1) (momentum-coefficient 0.9)
+                             (epochs 1) (iterations 10))
   "Return the best learing rate found in ITERATIONS steps of dichotomic search
 (between 0 and 1). In each step, the NEURAL-NETWORK is trained EPOCHS times
-using some INPUTS, TARGETS and BATCH-SIZE."
+using some INPUTS, TARGETS, BATCH-SIZE and MOMENTUM-COEFFICIENT."
   (labels ((cost (learning-rate)
              (let ((nn (copy neural-network)))
                (dotimes (i epochs)
-                 (train nn inputs targets learning-rate batch-size))
+                 (train nn inputs targets learning-rate
+                        :batch-size batch-size
+                        :momentum-coefficient momentum-coefficient))
                (mean-absolute-error nn inputs targets)))
            (middle (x y)
              (/ (+ x y) 2.0d0))

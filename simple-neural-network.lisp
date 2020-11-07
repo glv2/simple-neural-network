@@ -68,13 +68,6 @@
     (dotimes (i (* output-size input-size) weights)
       (setf (aref weights i) (- (random (* 2.0d0 r)) r)))))
 
-(defun make-random-biases (size)
-  "Generate a vector of SIZE random biases."
-  (let ((biases (make-double-float-array size))
-        (r (/ 1.0d0 (sqrt size))))
-    (dotimes (i size biases)
-      (setf (aref biases i) (- (random (* 2.0d0 r)) r)))))
-
 (defun create-neural-network (input-size output-size &rest hidden-layers-sizes)
   "Create a neural network having INPUT-SIZE inputs, OUTPUT-SIZE outputs, and
 optionally some intermediary layers whose sizes are specified by
@@ -92,7 +85,7 @@ biases."
                                           (make-random-weights input-size
                                                                output-size))))
                                     layer-sizes)))
-         (biases (mapcar #'make-random-biases (rest layer-sizes)))
+         (biases (mapcar #'make-double-float-array (rest layer-sizes)))
          (gradients (mapcar (lambda (weights)
                               (make-double-float-array (length weights)))
                             weights))

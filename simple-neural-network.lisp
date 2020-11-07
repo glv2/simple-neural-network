@@ -311,20 +311,6 @@ first layer and compute the gradients."
       (setf (aref momentums i) momentum)
       (setf (aref gradients i) 0.0d0))))
 
-(defun update-biases (biases gradients momentums gradient-coefficient
-                      momentum-coefficient)
-  "Update the BIASES and MOMENTUMS of a layer and clear the GRADIENTS."
-  (declare (type double-float-array biases gradients momentums)
-           (type double-float gradient-coefficient momentum-coefficient)
-           (optimize (speed 3) (safety 0)))
-  (dotimes (i (length biases))
-    (let ((momentum (+ (* gradient-coefficient (aref gradients i))
-                       (* momentum-coefficient (aref momentums i)))))
-      (declare (type double-float momentum))
-      (decf (aref biases i) momentum)
-      (setf (aref momentums i) momentum)
-      (setf (aref gradients i) 0.0d0))))
-
 (defun update-weights-and-biases (neural-network learning-rate
                                   momentum-coefficient)
   "Update all the weights and biases of the NEURAL-NETWORK."
@@ -333,8 +319,8 @@ first layer and compute the gradients."
                     bias-gradients bias-momentums)
              (update-weights weights weight-gradients weight-momentums
                              gradient-coefficient momentum-coefficient)
-             (update-biases biases bias-gradients bias-momentums
-                            gradient-coefficient momentum-coefficient))
+             (update-weights biases bias-gradients bias-momentums
+                             gradient-coefficient momentum-coefficient))
            (neural-network-weights neural-network)
            (neural-network-biases neural-network)
            (neural-network-weight-gradients neural-network)

@@ -202,11 +202,9 @@ TARGET."
   "Compute the error of the OUTPUT layer based on the error of the next layer."
   (declare (type double-float-array previous-delta output weights delta)
            (optimize (speed 3) (safety 0)))
-  (let ((delta-size (length delta)))
-    (declare (type fixnum delta-size))
-    (%dotimes (i delta-size delta)
-      (declare (type fixnum i))
-      (compute-single-delta previous-delta output weights delta i))))
+  (%dotimes (i (length delta) delta)
+    (declare (type fixnum i))
+    (compute-single-delta previous-delta output weights delta i)))
 
 (declaim (inline add-weight-gradient))
 (defun add-weight-gradient (input gradients delta index)
@@ -230,12 +228,10 @@ INDEX in a layer to the sum of the gradients for previous inputs."
 inputs."
   (declare (type double-float-array input weight-gradients bias-gradients delta)
            (optimize (speed 3) (safety 0)))
-  (let ((delta-size (length delta)))
-    (declare (type fixnum delta-size))
-    (%dotimes (i delta-size)
-      (declare (type fixnum i))
-      (add-weight-gradient input weight-gradients delta i)
-      (incf (aref bias-gradients i) (aref delta i)))))
+  (%dotimes (i (length delta))
+    (declare (type fixnum i))
+    (add-weight-gradient input weight-gradients delta i)
+    (incf (aref bias-gradients i) (aref delta i))))
 
 (declaim (inline average-gradient))
 (defun average-gradient (gradient batch-size)

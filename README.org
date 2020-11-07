@@ -159,7 +159,7 @@ Neural network for the XOR function:
 (defvar targets (mapcar #'normalize '(#(0) #(1) #(1) #(0))))
 (defvar nn (snn:create-neural-network 2 1 4))
 (dotimes (i 1000)
-  (snn:train nn inputs targets 0.01))
+  (snn:train nn inputs targets 0.1))
 
 (denormalize (snn:predict nn (normalize #(0 0))))
 -> 0

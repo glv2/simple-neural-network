@@ -28,9 +28,11 @@
   layers
   weights
   biases
-  gradients
-  momentums
-  deltas)
+  deltas
+  weight-gradients
+  weight-momentums
+  bias-gradients
+  bias-momentums)
 
 (defun make-double-float-array (size)
   "Make a new array of SIZE double floats."
@@ -86,19 +88,27 @@ biases."
                                                                output-size))))
                                     layer-sizes)))
          (biases (mapcar #'make-double-float-array (rest layer-sizes)))
-         (gradients (mapcar (lambda (weights)
-                              (make-double-float-array (length weights)))
-                            weights))
-         (momentums (mapcar (lambda (weights)
-                              (make-double-float-array (length weights)))
-                            weights))
-         (deltas (mapcar #'make-double-float-array (rest layer-sizes))))
+         (deltas (mapcar #'make-double-float-array (rest layer-sizes)))
+         (weight-gradients (mapcar (lambda (weights)
+                                     (make-double-float-array (length weights)))
+                                   weights))
+         (weight-momentums (mapcar (lambda (weights)
+                                     (make-double-float-array (length weights)))
+                                   weights))
+         (bias-gradients (mapcar (lambda (biases)
+                                   (make-double-float-array (length biases)))
+                                 biases))
+         (bias-momentums (mapcar (lambda (biases)
+                                   (make-double-float-array (length biases)))
+                                 biases)))
     (make-neural-network :layers layers
                          :weights weights
                          :biases biases
-                         :gradients gradients
-                         :momentums momentums
-                         :deltas deltas)))
+                         :deltas deltas
+                         :weight-gradients weight-gradients
+                         :weight-momentums weight-momentums
+                         :bias-gradients bias-gradients
+                         :bias-momentums bias-momentums)))
 
 (defun set-input (neural-network input)
   "Set the input layer of the NEURAL-NETWORK to INPUT."
@@ -198,8 +208,8 @@ TARGET."
       (declare (type fixnum i))
       (compute-single-delta previous-delta output weights delta i))))
 
-(declaim (inline add-gradient))
-(defun add-gradient (input gradients delta index)
+(declaim (inline add-weight-gradient))
+(defun add-weight-gradient (input gradients delta index)
   "Add the gradients computed for an input for the weights of the neuron at
 INDEX in a layer to the sum of the gradients for previous inputs."
   (declare (type double-float-array input gradients delta)
@@ -215,16 +225,17 @@ INDEX in a layer to the sum of the gradients for previous inputs."
       (declare (type fixnum j k))
       (incf (aref gradients j) (* (aref input k) gradient)))))
 
-(defun add-gradients (input gradients delta)
+(defun add-gradients (input weight-gradients bias-gradients delta)
   "Add the gradients computed for an input to sum of the gradients for previous
 inputs."
-  (declare (type double-float-array input gradients delta)
+  (declare (type double-float-array input weight-gradients bias-gradients delta)
            (optimize (speed 3) (safety 0)))
   (let ((delta-size (length delta)))
     (declare (type fixnum delta-size))
     (%dotimes (i delta-size)
       (declare (type fixnum i))
-      (add-gradient input gradients delta i))))
+      (add-weight-gradient input weight-gradients delta i)
+      (incf (aref bias-gradients i) (aref delta i)))))
 
 (declaim (inline average-gradient))
 (defun average-gradient (gradient batch-size)
@@ -239,9 +250,11 @@ inputs."
 (defun average-gradients (neural-network batch-size)
   "Compute the average gradients for the whole NEURAL-NETWORK."
   (let ((batch-size (coerce batch-size 'double-float)))
-    (%mapc (lambda (gradient)
-             (average-gradient gradient batch-size))
-           (neural-network-gradients neural-network))
+    (%mapc (lambda (weight-gradient bias-gradient)
+             (average-gradient weight-gradient batch-size)
+             (average-gradient bias-gradient batch-size))
+           (neural-network-weight-gradients neural-network)
+           (neural-network-bias-gradients neural-network))
     (values)))
 
 (defun backpropagate (neural-network)
@@ -251,8 +264,10 @@ first layer and compute the gradients."
                (rest layers))
        (weights (reverse (neural-network-weights neural-network))
                 (rest weights))
-       (gradients (reverse (neural-network-gradients neural-network))
-                  (rest gradients))
+       (weight-gradients (reverse (neural-network-weight-gradients neural-network))
+                         (rest weight-gradients))
+       (bias-gradients (reverse (neural-network-bias-gradients neural-network))
+                       (rest bias-gradients))
        (deltas (reverse (neural-network-deltas neural-network))
                (rest deltas)))
       ((endp deltas))
@@ -262,59 +277,75 @@ first layer and compute the gradients."
                      (first weights)
                      (second deltas)))
     (add-gradients (first layers)
-                   (first gradients)
+                   (first weight-gradients)
+                   (first bias-gradients)
                    (first deltas)))
   (values))
 
+(declaim (inline clear-momentum))
+(defun clear-momentum (momentum)
+  "Reset momentum to 0."
+  (declare (type double-float-array momentum)
+           (optimize (speed 3) (safety 0)))
+  (dotimes (i (length momentum))
+    (declare (type fixnum i))
+    (setf (aref momentum i) 0.0d0)))
+
 (defun clear-momentums (neural-network)
   "Reset all the momentums to 0."
-  (declare (optimize (speed 3) (safety 0)))
-  (%mapc (lambda (momentums)
-           (declare (type double-float-array momentums))
-           (dotimes (i (length momentums))
-             (declare (type fixnum i))
-             (setf (aref momentums i) 0.0d0)))
-         (neural-network-momentums neural-network))
+  (%mapc (lambda (weight-momentum bias-momentum)
+           (clear-momentum weight-momentum)
+           (clear-momentum bias-momentum))
+         (neural-network-weight-momentums neural-network)
+         (neural-network-bias-momentums neural-network))
   (values))
 
-(defun update-weights (weights gradients momentums learning-rate
+(defun update-weights (weights gradients momentums gradient-coefficient
                        momentum-coefficient)
   "Update the WEIGHTS and MOMENTUMS of a layer and clear the GRADIENTS."
   (declare (type double-float-array weights gradients momentums)
-           (type double-float learning-rate momentum-coefficient)
+           (type double-float gradient-coefficient momentum-coefficient)
            (optimize (speed 3) (safety 0)))
-  (let ((gradient-coefficient (* learning-rate (- 1.0d0 momentum-coefficient))))
-    (declare (type double-float gradient-coefficient))
-    (dotimes (i (length weights))
-      (declare (type fixnum i))
-      (let ((momentum (+ (* gradient-coefficient (aref gradients i))
-                         (* momentum-coefficient (aref momentums i)))))
-        (declare (type double-float momentum))
-        (decf (aref weights i) momentum)
-        (setf (aref momentums i) momentum)
-        (setf (aref gradients i) 0.0d0)))))
+  (dotimes (i (length weights))
+    (declare (type fixnum i))
+    (let ((momentum (+ (* gradient-coefficient (aref gradients i))
+                       (* momentum-coefficient (aref momentums i)))))
+      (declare (type double-float momentum))
+      (decf (aref weights i) momentum)
+      (setf (aref momentums i) momentum)
+      (setf (aref gradients i) 0.0d0))))
 
-(defun update-biases (biases delta learning-rate)
-  "Update the BIASES of a layer."
-  (declare (type double-float-array biases delta)
-           (type double-float learning-rate)
+(defun update-biases (biases gradients momentums gradient-coefficient
+                      momentum-coefficient)
+  "Update the BIASES and MOMENTUMS of a layer and clear the GRADIENTS."
+  (declare (type double-float-array biases gradients momentums)
+           (type double-float gradient-coefficient momentum-coefficient)
            (optimize (speed 3) (safety 0)))
   (dotimes (i (length biases))
-    (decf (aref biases i) (* learning-rate (aref delta i)))))
+    (let ((momentum (+ (* gradient-coefficient (aref gradients i))
+                       (* momentum-coefficient (aref momentums i)))))
+      (declare (type double-float momentum))
+      (decf (aref biases i) momentum)
+      (setf (aref momentums i) momentum)
+      (setf (aref gradients i) 0.0d0))))
 
 (defun update-weights-and-biases (neural-network learning-rate
                                   momentum-coefficient)
   "Update all the weights and biases of the NEURAL-NETWORK."
-  (%mapc (lambda (weights biases gradients momentums delta)
-           (update-weights weights gradients momentums
-                           learning-rate momentum-coefficient)
-           (update-biases biases delta learning-rate))
-         (neural-network-weights neural-network)
-         (neural-network-biases neural-network)
-         (neural-network-gradients neural-network)
-         (neural-network-momentums neural-network)
-         (neural-network-deltas neural-network))
-  (values))
+  (let ((gradient-coefficient (* learning-rate (- 1.0d0 momentum-coefficient))))
+    (%mapc (lambda (weights biases weight-gradients weight-momentums
+                    bias-gradients bias-momentums)
+             (update-weights weights weight-gradients weight-momentums
+                             gradient-coefficient momentum-coefficient)
+             (update-biases biases bias-gradients bias-momentums
+                            gradient-coefficient momentum-coefficient))
+           (neural-network-weights neural-network)
+           (neural-network-biases neural-network)
+           (neural-network-weight-gradients neural-network)
+           (neural-network-weight-momentums neural-network)
+           (neural-network-bias-gradients neural-network)
+           (neural-network-bias-momentums neural-network))
+    (values)))
 
 (defun train (neural-network inputs targets learning-rate
               &key (batch-size 1) (momentum-coefficient 0.9))
@@ -369,34 +400,46 @@ a pathname-designator."
 a pathname-designator."
   (destructuring-bind (layer-sizes weights biases) (cl-store:restore place)
     (let ((layers (mapcar #'make-double-float-array layer-sizes))
-          (gradients (mapcar (lambda (weights)
-                               (make-double-float-array (length weights)))
-                             weights))
-          (momentums (mapcar (lambda (weights)
-                               (make-double-float-array (length weights)))
-                             weights))
-          (deltas (mapcar #'make-double-float-array (rest layer-sizes))))
+          (deltas (mapcar #'make-double-float-array (rest layer-sizes)))
+          (weight-gradients (mapcar (lambda (weights)
+                                      (make-double-float-array (length weights)))
+                                    weights))
+          (weight-momentums (mapcar (lambda (weights)
+                                      (make-double-float-array (length weights)))
+                                    weights))
+          (bias-gradients (mapcar (lambda (biases)
+                                    (make-double-float-array (length biases)))
+                                  biases))
+          (bias-momentums (mapcar (lambda (biases)
+                                    (make-double-float-array (length biases)))
+                                  biases)))
       (make-neural-network :layers layers
                            :weights weights
                            :biases biases
-                           :gradients gradients
-                           :momentums momentums
-                           :deltas deltas))))
+                           :deltas deltas
+                           :weight-gradients weight-gradients
+                           :weight-momentums weight-momentums
+                           :bias-gradients bias-gradients
+                           :bias-momentums bias-momentums))))
 
 (defun copy (neural-network)
   "Return a copy of the NEURAL-NETWORK."
   (let ((layers (neural-network-layers neural-network))
         (weights (neural-network-weights neural-network))
         (biases (neural-network-biases neural-network))
-        (gradients (neural-network-gradients neural-network))
-        (momentums (neural-network-momentums neural-network))
-        (deltas (neural-network-deltas neural-network)))
+        (deltas (neural-network-deltas neural-network))
+        (weight-gradients (neural-network-weight-gradients neural-network))
+        (weight-momentums (neural-network-weight-momentums neural-network))
+        (bias-gradients (neural-network-bias-gradients neural-network))
+        (bias-momentums (neural-network-bias-momentums neural-network)))
     (make-neural-network :layers (mapcar #'copy-seq layers)
                          :weights (mapcar #'copy-seq weights)
                          :biases (mapcar #'copy-seq biases)
-                         :gradients (mapcar #'copy-seq gradients)
-                         :momentums (mapcar #'copy-seq momentums)
-                         :deltas (mapcar #'copy-seq deltas))))
+                         :deltas (mapcar #'copy-seq deltas)
+                         :weight-gradients (mapcar #'copy-seq weight-gradients)
+                         :weight-momentums (mapcar #'copy-seq weight-momentums)
+                         :bias-gradients (mapcar #'copy-seq bias-gradients)
+                         :bias-momentums (mapcar #'copy-seq bias-momentums))))
 
 (defun index-of-max-value (values)
   "Return the index of the greatest value in VALUES."

@@ -41,7 +41,7 @@
                              #(0.0d0))))
           (nn (create-neural-network 2 1 4)))
       (dotimes (i 1000)
-        (train nn inputs targets 0.01))
+        (train nn inputs targets 0.1))
       (is (= 1 (accuracy nn inputs targets :test #'same-value-p))))))
 
 (test cos

@@ -529,10 +529,10 @@ original input from the normalized one."
 
 (defun find-learning-rate (neural-network inputs targets
                            &key (batch-size 1) (momentum-coefficient 0.9)
-                             (epochs 1) (iterations 10))
+                             (epochs 1) (iterations 10) (minimum 0) (maximum 1))
   "Return the best learing rate found in ITERATIONS steps of dichotomic search
-(between 0 and 1). In each step, the NEURAL-NETWORK is trained EPOCHS times
-using some INPUTS, TARGETS, BATCH-SIZE and MOMENTUM-COEFFICIENT."
+(between MINIMUM and MAXIMUM). In each step, the NEURAL-NETWORK is trained
+EPOCHS times using some INPUTS, TARGETS, BATCH-SIZE and MOMENTUM-COEFFICIENT."
   (labels ((cost (learning-rate)
              (let ((nn (copy neural-network)))
                (dotimes (i epochs)
@@ -552,4 +552,7 @@ using some INPUTS, TARGETS, BATCH-SIZE and MOMENTUM-COEFFICIENT."
                (t
                 (let ((d (middle low a)))
                   (stp (1- i) low d (middle low m) a m (cost d) cost-a a))))))
-    (stp iterations 0 1/3 1/2 2/3 1 (cost 1/3) (cost 2/3) nil)))
+    (let ((a (/ (+ minimum minimum maximum) 3))
+          (m (middle minimum maximum))
+          (b (/ (+ minimum maximum maximum) 3)))
+      (stp iterations minimum a m b maximum (cost a) (cost b) nil))))

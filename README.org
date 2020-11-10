@@ -135,12 +135,14 @@ original input from the normalized one.
 
 #+BEGIN_SRC lisp
 (find-learning-rate neural-network inputs targets
-                    &key batch-size momentum-coefficient epochs iterations)
+                    &key batch-size momentum-coefficient epochs
+                         iterations minimum maximum)
 #+END_SRC
 
 Return the best learing rate found in /iterations/ steps of dichotomic search
-(between 0 and 1). In each step, the /neural-network/ is trained /epochs/ times
-using some /inputs/, /targets/, /batch-size/ and /momentum-coefficient/.
+(between /minimum/ and /maximum/). In each step, the /neural-network/ is
+trained /epochs/ times using some /inputs/, /targets/, /batch-size/ and
+/momentum-coefficient/.
 
 * Examples
 

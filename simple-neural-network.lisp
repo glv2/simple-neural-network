@@ -514,18 +514,22 @@ when testing it with some INPUTS and TARGETS."
        standard-deviations))
 
 (defun find-normalization (inputs)
-  "Return two values. The first is a normalization function taking a input and
-returning a normalized input. Applying this normalization function to the
+  "Return four values. The first is a normalization function taking an input
+and returning a normalized input. Applying this normalization function to the
 inputs gives a data set in which each variable has mean 0 and standard
 deviation 1. The second is a denormalization function that can compute the
-original input from the normalized one."
+original input from the normalized one. The third is the code of the
+normalization function. The fourth is the code of the denormalization
+function."
   (let* ((means (means inputs))
          (standard-deviations (standard-deviations inputs means))
-         (normalize (lambda (input)
-                      (normalize input means standard-deviations)))
-         (denormalize (lambda (input)
-                        (denormalize input means standard-deviations))))
-    (values normalize denormalize)))
+         (normalize-form `(lambda (input)
+                            (normalize input ,means ,standard-deviations)))
+         (normalize (compile nil normalize-form))
+         (denormalize-form `(lambda (input)
+                              (denormalize input ,means ,standard-deviations)))
+         (denormalize (compile nil denormalize-form)))
+    (values normalize denormalize normalize-form denormalize-form)))
 
 (defun find-learning-rate (neural-network inputs targets
                            &key (batch-size 1) (momentum-coefficient 0.9)

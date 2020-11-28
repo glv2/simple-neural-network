@@ -126,11 +126,12 @@ when testing it with some /inputs/ and /targets/.
 (find-normalization inputs)
 #+END_SRC
 
-Return two values. The first is a normalization function taking a input and
+Return four values. The first is a normalization function taking an input and
 returning a normalized input. Applying this normalization function to the
 inputs gives a data set in which each variable has mean 0 and standard
 deviation 1. The second is a denormalization function that can compute the
-original input from the normalized one.
+original input from the normalized one. The third is the code of the
+normalization function. The fourth is the code of the denormalization function.
 
 
 #+BEGIN_SRC lisp

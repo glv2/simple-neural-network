@@ -1,6 +1,6 @@
 #+TITLE: Simple Neural Network
 #+AUTHOR: Guillaume Le Vaillant
-#+DATE: 2020-10-23
+#+DATE: 2020-12-03
 #+EMAIL: glv@posteo.net
 #+LANGUAGE: en
 #+OPTIONS: num:nil toc:nil html-postamble:nil html-scripts:nil
@@ -10,7 +10,9 @@
 * Description
 
 *simple-neural-network* is a Common Lisp library for creating, training and
-using basic neural networks.
+using basic neural networks. The networks created by this library are
+feedforward neural networks trained using backpropagation. The activation
+function used by the neurons is ~A(x) = 1.7159 * tanh(0.66667 * x)~.
 
 *simple-neural-network* depends on the *cl-store* and *lparallel* libraries.
 

@@ -1,5 +1,5 @@
 ;;; This library implements a simple neural network.
-;;; Copyright 2019-2020 Guillaume Le Vaillant
+;;; Copyright 2019-2022 Guillaume Le Vaillant
 ;;; This library is free software released under the GNU GPL-3 license.
 
 (defpackage :simple-neural-network/test
@@ -51,24 +51,31 @@
                  collect (vector x) into inputs
                  collect (vector (cos x)) into targets
                  finally (return (list inputs targets)))))
-    (destructuring-bind (inputs targets) (get-samples 1000)
-      (multiple-value-bind (normalize denormalize) (find-normalization inputs)
-        (let ((inputs (mapcar normalize inputs))
-              (targets (mapcar normalize targets))
-              (nn (create-neural-network 1 1 10 10))
-              (close-enough-p (lambda (output target)
-                                (let ((x (aref (funcall denormalize output) 0))
-                                      (y (aref (funcall denormalize target) 0)))
-                                  (<= (abs (/ (- x y) y)) 0.1)))))
-          (dotimes (i 1000)
-            (let ((learning-rate (/ 0.2 (1+ (* 0.1 i))))
-                  (batch-size (max 1 (floor i 100))))
-              (train nn inputs targets learning-rate :batch-size batch-size)))
-          (destructuring-bind (inputs targets) (get-samples 100)
-            (let ((inputs (mapcar normalize inputs))
-                  (targets (mapcar normalize targets)))
-              (is (<= 4/5 (accuracy nn inputs targets
-                                    :test close-enough-p))))))))))
+    (destructuring-bind (inputs targets) (get-samples 10000)
+      (multiple-value-bind (normalize-input denormalize-input)
+          (find-normalization inputs)
+        (declare (ignore denormalize-input))
+        (multiple-value-bind (normalize-target denormalize-target)
+            (find-normalization targets)
+          (let* ((inputs (mapcar normalize-input inputs))
+                 (targets (mapcar normalize-target targets))
+                 (nn (create-neural-network 1 1 8 8 8))
+                 (learning-rate (find-learning-rate nn inputs targets
+                                                    :iterations 20
+                                                    :epochs 10
+                                                    :maximum 0.3))
+                 (close-enough-p (lambda (output target)
+                                   (let ((x (aref (funcall denormalize-target output) 0))
+                                         (y (aref (funcall denormalize-target target) 0)))
+                                     (<= (abs (/ (- x y) y))) 0.01))))
+            (dotimes (i 100)
+              (let ((batch-size (max 1 (floor i 10))))
+                (train nn inputs targets learning-rate :batch-size batch-size)))
+            (destructuring-bind (inputs targets) (get-samples 100)
+              (let ((inputs (mapcar normalize-input inputs))
+                    (targets (mapcar normalize-target targets)))
+                (is (<= 90/100 (accuracy nn inputs targets
+                                         :test close-enough-p)))))))))))
 
 (defun mnist-file-path (filename)
   (asdf:system-relative-pathname "simple-neural-network"

@@ -51,7 +51,7 @@
                  collect (vector x) into inputs
                  collect (vector (cos x)) into targets
                  finally (return (list inputs targets)))))
-    (destructuring-bind (inputs targets) (get-samples 10000)
+    (destructuring-bind (inputs targets) (get-samples 100000)
       (multiple-value-bind (normalize-input denormalize-input)
           (find-normalization inputs)
         (declare (ignore denormalize-input))
@@ -67,7 +67,7 @@
                  (close-enough-p (lambda (output target)
                                    (let ((x (aref (funcall denormalize-target output) 0))
                                          (y (aref (funcall denormalize-target target) 0)))
-                                     (<= (abs (/ (- x y) y))) 0.01))))
+                                     (<= (abs (/ (- x y) y)) 0.01)))))
             (dotimes (i 100)
               (let ((batch-size (max 1 (floor i 10))))
                 (train nn inputs targets learning-rate :batch-size batch-size)))

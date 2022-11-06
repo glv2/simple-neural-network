@@ -1,22 +1,25 @@
 ;;; This library implements a simple neural network.
-;;; Copyright 2019-2020 Guillaume Le Vaillant
+;;; Copyright 2019-2022 Guillaume Le Vaillant
 ;;; This library is free software released under the GNU GPL-3 license.
 
 (defpackage :simple-neural-network
   (:nicknames :snn)
   (:use :cl)
-  (:export #:create-neural-network
-           #:train
-           #:predict
-           #:store
-           #:restore
+  (:export #:accuracy
            #:copy
-           #:index-of-max-value
-           #:same-category-p
-           #:accuracy
-           #:mean-absolute-error
+           #:create-neural-network
+           #:find-learning-rate
            #:find-normalization
-           #:find-learning-rate))
+           #:index-of-max-value
+           #:mean-absolute-error
+           #:neural-network-biases
+           #:neural-network-layers
+           #:neural-network-weights
+           #:predict
+           #:restore
+           #:same-category-p
+           #:store
+           #:train))
 
 (in-package :simple-neural-network)
 

@@ -1,6 +1,6 @@
 #+TITLE: Simple Neural Network
 #+AUTHOR: Guillaume Le Vaillant
-#+DATE: 2020-12-03
+#+DATE: 2022-11-06
 #+EMAIL: glv@posteo.net
 #+LANGUAGE: en
 #+OPTIONS: num:nil toc:nil html-postamble:nil html-scripts:nil
@@ -146,6 +146,17 @@ Return the best learing rate found in /iterations/ steps of dichotomic search
 (between /minimum/ and /maximum/). In each step, the /neural-network/ is
 trained /epochs/ times using some /inputs/, /targets/, /batch-size/ and
 /momentum-coefficient/.
+
+#+BEGIN_SRC lisp
+(neural-network-layers neural-network)
+(neural-network-weights neural-network)
+(neural-network-biases neural-network)
+#+END_SRC
+
+These functions are SETFable. They can be used to get or set the neuron values,
+the weights and the biases of the /neural-network/, which are represented as
+a list of vectors where each vector contains the values (~double-float~) for
+a layer.
 
 * Examples
 
